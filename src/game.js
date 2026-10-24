@@ -194,7 +194,7 @@ export function boot() {
     dom.undo.setAttribute('aria-label', chrome.undoLabel);
     dom.restart.setAttribute('aria-label', chrome.restartLabel);
     dom.hintButton.setAttribute('aria-label', chrome.hintLabel);
-    dom.keys.textContent = app.t('hud.keys');
+    if (dom.keys) dom.keys.textContent = app.t('hud.keys');
 
     const objects = UI.hudObjects(app);
     if (dom.objects.dataset.signature !== objects) {

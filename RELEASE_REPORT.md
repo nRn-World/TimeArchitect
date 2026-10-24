@@ -19,9 +19,9 @@ SPDX: `LicenseRef-nRnWorld-Educational-1.0`
 | Emulator | Pixel 8 Pro, API 35, 1344×2992 |
 | Node.js | v24.14.1 |
 | Save schema | 2 |
-| Service worker | network-first, cache name hashed per build (last: `time-architect-c43ab7f587d7`) |
+| Service worker | network-first, cache name hashed per build (last: `time-architect-43753dd0425c`) |
 | APK / AAB size | 7.9 MB debug / 5.7 MB release (unsigned) |
-| Final dist fingerprint | `time-architect-c43ab7f587d7` |
+| Final dist fingerprint | `time-architect-43753dd0425c` |
 
 ## Commands executed (final state)
 
