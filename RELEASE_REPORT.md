@@ -142,16 +142,19 @@ black page. The boot mark is the same studio-produced app icon, not a stock asse
 | Native-speaker proofread | Not done; translations were authored for this build |
 | Screen-reader audit | Semantic labels exist; no assistive-technology pass was run |
 | Offline-with-network-disabled proof | Service worker is precached, but the network was not physically disabled during capture |
-| Hub cover / store feature graphic | Hub cover generated from the game's own art; no 1024×500 store feature graphic yet |
+| Store feature graphic | Hub cover generated from the game's own art; no 1024×500 store feature graphic yet |
 
 ## Repository and publishing
 
-- Repository: <https://github.com/nRn-World/TimeArchitect> (`main`, release commit `bfab2f5`).
+- Repository: <https://github.com/nRn-World/TimeArchitect> (`main`, release commit `bfab2f5`,
+  quality pass `142d313`).
 - Playable build: <https://nrnworld.one/TimeArchitect/> (GitHub Pages from `main`).
 - Hub project page: <https://nrnworld.one/p/timearchitect/> with cover art, gallery, specs and
   download links; listed in the hub's sitemap, RSS feed and JSON-LD.
-- Post-publish smoke test: production title screen, English locale, chamber 1 load, dial selection,
-  pause (rate `0`) and an empty browser console were verified in Chromium at 390×844.
+- Post-publish smoke test: production title, chamber 1, dial selection, pause and an empty console
+  were verified in Chromium at 390×844 and 1280×820; the compact control layout, Arabic RTL order
+  and styled scrollbars were checked in the same pass. GitHub Pages served the updated modules,
+  boot layer and camera code.
 
 No keystore, store credentials, ad IDs or analytics keys exist in the tree; `dist/`,
 `android/app/build/`, `android/local.properties`, `ios/App/Pods` and `*.keystore` are git-ignored.
