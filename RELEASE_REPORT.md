@@ -111,13 +111,19 @@ the finale at par (21), including the ending screen.
 | Native-speaker proofread | Not done; translations were authored for this build |
 | Screen-reader audit | Semantic labels exist; no assistive-technology pass was run |
 | Offline-with-network-disabled proof | Service worker is precached, but the network was not physically disabled during capture |
+| Hub cover / store feature graphic | Hub cover generated from the game's own art; no 1024×500 store feature graphic yet |
 
-## Repository
+## Repository and publishing
 
-The project lives inside a larger local folder that is not a dedicated Git repository, so nothing was
-committed or pushed. No keystore, store credentials, ad IDs or analytics keys exist in the tree;
-`dist/`, `android/app/build/`, `android/local.properties`, `ios/App/Pods` and `*.keystore` are
-git-ignored for the day this becomes its own repository.
+- Repository: <https://github.com/nRn-World/TimeArchitect> (`main`, release commit `bfab2f5`).
+- Playable build: <https://nrnworld.one/TimeArchitect/> (GitHub Pages from `main`).
+- Hub project page: <https://nrnworld.one/p/timearchitect/> with cover art, gallery, specs and
+  download links; listed in the hub's sitemap, RSS feed and JSON-LD.
+- Post-publish smoke test: production title screen, English locale, chamber 1 load, dial selection,
+  pause (rate `0`) and an empty browser console were verified in Chromium at 390×844.
+
+No keystore, store credentials, ad IDs or analytics keys exist in the tree; `dist/`,
+`android/app/build/`, `android/local.properties`, `ios/App/Pods` and `*.keystore` are git-ignored.
 
 ## Known limitations
 

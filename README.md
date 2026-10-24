@@ -3,6 +3,10 @@
 **Rewind, pause and fast-forward individual objects to solve deterministic puzzle chambers.**
 By [nRnWorld](mailto:bynrnworld@gmail.com) — commercial licensing contact: <bynrnworld@gmail.com>
 
+**Play now:** [nrnworld.one/TimeArchitect](https://nrnworld.one/TimeArchitect/) ·
+**Project page:** [nrnworld.one/p/timearchitect](https://nrnworld.one/p/timearchitect/) ·
+**Repository:** [github.com/nRn-World/TimeArchitect](https://github.com/nRn-World/TimeArchitect)
+
 Time Architect is a complete, handcrafted puzzle campaign set in clockwork chambers. Every step
 you take advances the chamber clock by one tick. Dials hold gates and bridges open; drones sweep
 the galleries. You can rewind, freeze, play or accelerate any object, but only one moment can be
