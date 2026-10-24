@@ -87,6 +87,28 @@ button {
   overflow-y: auto;
   overscroll-behavior: contain;
   z-index: 5;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 199, 107, 0.26) transparent;
+}
+
+.layer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.layer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.layer::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background: rgba(255, 199, 107, 0.24);
+  background-clip: padding-box;
+}
+
+.layer::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 199, 107, 0.42);
+  background-clip: padding-box;
 }
 
 .layer:empty {
@@ -101,6 +123,110 @@ button {
     rgba(5, 8, 14, 0.7);
   backdrop-filter: blur(7px) saturate(0.8);
   -webkit-backdrop-filter: blur(7px) saturate(0.8);
+}
+
+/* The title is the shop window: a little ambient clockwork light keeps it from
+   reading as an empty black page while the menu stays perfectly legible. */
+body[data-screen="title"] .layer:not(:empty) {
+  background:
+    radial-gradient(90% 62% at 50% 16%, rgba(15, 32, 48, 0.62), rgba(5, 8, 14, 0.9) 72%),
+    rgba(5, 8, 14, 0.62);
+}
+
+body[data-screen="title"] .layer:not(:empty)::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(30% 22% at 50% 24%, rgba(111, 230, 255, 0.16), transparent 72%),
+    radial-gradient(44% 32% at 50% 26%, rgba(255, 199, 107, 0.07), transparent 78%),
+    repeating-radial-gradient(circle at 50% 30%, rgba(255, 199, 107, 0.075) 0 1px, transparent 1px 84px);
+  -webkit-mask-image: radial-gradient(62% 52% at 50% 30%, #000 10%, transparent 78%);
+  mask-image: radial-gradient(62% 52% at 50% 30%, #000 10%, transparent 78%);
+}
+
+body[data-screen="title"] .screen {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- boot ---------- */
+
+.boot {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  background:
+    radial-gradient(46% 34% at 50% 42%, rgba(111, 230, 255, 0.1), transparent 72%),
+    radial-gradient(70% 55% at 50% 38%, rgba(255, 199, 107, 0.05), transparent 76%),
+    #05080e;
+  transition: opacity 0.42s ease, visibility 0.42s ease;
+}
+
+.boot--done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.boot__mark {
+  width: 84px;
+  height: 84px;
+  border-radius: 20px;
+  filter: drop-shadow(0 0 30px rgba(111, 230, 255, 0.24));
+}
+
+.boot__title {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 6vw, 2.2rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #fff8ea, var(--brass) 62%, #a9743a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.boot__line {
+  width: 128px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.boot__line i {
+  display: block;
+  width: 46%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, var(--brass), transparent);
+  animation: boot-scan 1.5s ease-in-out infinite;
+}
+
+.boot__studio {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 0.66rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+
+@keyframes boot-scan {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(260%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot__line i {
+    animation: none;
+  }
 }
 
 /* ---------- iconography ---------- */
@@ -122,6 +248,18 @@ button {
 .hintcard__icon .icon { width: 18px; height: 18px; }
 .levelcard__lock .icon { width: 18px; height: 18px; }
 html[dir="rtl"] .icon--back { transform: scaleX(-1); }
+
+/* Physical controls keep their physical order in RTL: the left arrow belongs
+   on the left and the timeline reads rewind → fast-forward. */
+html[dir="rtl"] .pad,
+html[dir="rtl"] .rates {
+  direction: ltr;
+}
+
+/* In RTL the time cluster sits on the outer (left) side of the deck. */
+html[dir="rtl"] .rates {
+  justify-content: start;
+}
 
 /* ---------- shared type ---------- */
 
@@ -1122,8 +1260,11 @@ html[dir="rtl"] .toast {
   display: none;
   gap: 10px;
   color: var(--text-faint);
-  font-size: 0.74rem;
-  justify-content: flex-end;
+  font-size: 0.72rem;
+  letter-spacing: 0.015em;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
 }
 
 kbd {
@@ -1143,6 +1284,8 @@ kbd {
 @media (min-width: 900px) and (hover: hover) {
   .keys {
     display: flex;
+    grid-column: 2;
+    justify-self: center;
   }
 
   .pad {
@@ -1150,7 +1293,15 @@ kbd {
   }
 
   .hud__bottom {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .hud__bottom .objects {
+    grid-column: 1;
+  }
+
+  .hud__bottom .rates {
+    grid-column: 3;
   }
 }
 
@@ -1198,7 +1349,7 @@ kbd {
   .pad {
     grid-area: pad;
     grid-template-columns: repeat(3, 44px);
-    grid-template-rows: repeat(3, 40px);
+    grid-template-rows: repeat(3, 44px);
   }
 
   .rates {
@@ -1224,13 +1375,61 @@ kbd {
   }
 }
 
-@media (max-height: 540px) {
-  .hud__sub {
+/* Compact phones cannot fit a 3-wide pad and four 52px time buttons side by
+   side; a 2×2 time cluster keeps every control inside the screen. */
+@media (max-width: 420px) {
+  .hud__bottom {
+    column-gap: 10px;
+  }
+
+  .rates {
+    display: grid;
+    grid-template-columns: repeat(2, 54px);
+    gap: 6px;
+    align-self: end;
+    justify-content: end;
+  }
+
+  .rate {
+    min-width: 0;
+    min-height: 56px;
+    width: 54px;
+    padding: 5px 2px;
+  }
+
+  .rate__label {
+    display: block;
+    font-size: 0.56rem;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+}
+
+@media (max-height: 620px) and (orientation: landscape) {
+  .hintcard {
+    inset-inline-start: max(14px, env(safe-area-inset-left));
+    inset-inline-end: auto;
+    inset-block-start: calc(72px + env(safe-area-inset-top));
+    width: min(330px, 44vw);
+    transform: none;
+    animation: none;
+    padding: 11px 12px;
+    gap: 9px;
+  }
+
+  .hintcard__icon {
     display: none;
   }
 
-  .hintcard {
-    inset-block-start: 74px;
+  .hintcard__text {
+    font-size: 0.76rem;
+    line-height: 1.4;
+  }
+}
+
+@media (max-height: 540px) {
+  .hud__sub {
+    display: none;
   }
 }
 

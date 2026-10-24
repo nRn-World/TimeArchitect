@@ -35,6 +35,7 @@ export default {
 
   'hud.moves': 'ティック',
   'hud.par': '基準',
+  'hud.keys': '矢印 / WASD 移動 · Space 待機 · 1–4 時間',
   'hud.undo': '一歩戻す',
   'hud.restart': '部屋をやり直す',
   'hud.pause': '一時停止',

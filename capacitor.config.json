@@ -17,5 +17,17 @@
     "backgroundColor": "#05080e",
     "contentInset": "never",
     "limitsNavigationsToAppBoundDomains": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "launchShowDuration": 0,
+      "backgroundColor": "#05080e",
+      "androidScaleType": "CENTER_CROP",
+      "splashFullScreen": true,
+      "splashImmersive": true,
+      "showSpinner": false,
+      "fadeOutDuration": 220
+    }
   }
 }

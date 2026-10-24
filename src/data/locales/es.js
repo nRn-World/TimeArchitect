@@ -35,6 +35,7 @@ export default {
 
   'hud.moves': 'Tics',
   'hud.par': 'Par',
+  'hud.keys': 'Flechas / WASD mover · Espacio esperar · 1–4 tiempo',
   'hud.undo': 'Rebobinar un paso',
   'hud.restart': 'Reiniciar cámara',
   'hud.pause': 'Pausa',

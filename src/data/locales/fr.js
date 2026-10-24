@@ -35,6 +35,7 @@ export default {
 
   'hud.moves': 'Ticks',
   'hud.par': 'Par',
+  'hud.keys': 'Flèches / WASD déplacer · Espace attendre · 1–4 temps',
   'hud.undo': 'Rembobiner un pas',
   'hud.restart': 'Recommencer la chambre',
   'hud.pause': 'Pause',

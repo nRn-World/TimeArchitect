@@ -35,6 +35,7 @@ export default {
 
   'hud.moves': 'Ticks',
   'hud.par': 'Par',
+  'hud.keys': 'Arrows / WASD move · Space wait · 1–4 time',
   'hud.undo': 'Rewind step',
   'hud.restart': 'Restart chamber',
   'hud.pause': 'Pause',

@@ -28,6 +28,7 @@ export function boot() {
     rates: document.getElementById('rates'),
     hint: document.getElementById('hint'),
     hintText: document.getElementById('hint-text'),
+    keys: document.getElementById('hud-keys'),
     toast: document.getElementById('toast'),
     banner: document.getElementById('banner')
   };
@@ -193,6 +194,7 @@ export function boot() {
     dom.undo.setAttribute('aria-label', chrome.undoLabel);
     dom.restart.setAttribute('aria-label', chrome.restartLabel);
     dom.hintButton.setAttribute('aria-label', chrome.hintLabel);
+    dom.keys.textContent = app.t('hud.keys');
 
     const objects = UI.hudObjects(app);
     if (dom.objects.dataset.signature !== objects) {
@@ -695,6 +697,20 @@ export function boot() {
     showScreen('language');
   } else {
     showScreen('title');
+  }
+
+  // The boot layer is plain HTML, so it paints before the canvas and modules
+  // settle. Fade it only after the first screen has been laid out.
+  const bootScreen = document.getElementById('boot');
+  if (bootScreen) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.setTimeout(() => {
+          bootScreen.classList.add('boot--done');
+          window.setTimeout(() => bootScreen.remove(), 500);
+        }, 250);
+      });
+    });
   }
 
   // expose for diagnostics and the automated smoke test

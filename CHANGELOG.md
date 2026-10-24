@@ -29,6 +29,17 @@ Native release: the same campaign, now packaged for Android and iOS.
 - Menus fought with the live chamber for attention; overlay screens now dim and blur the scene.
 - Gradle failed on JDK 25; the required JDK 17–21 is detected and documented.
 
+### Responsive and launch fixes
+- Desktop camera no longer clips the chamber walls; the board is framed with breathing room at
+  1280×820 and 1024×768.
+- Phones at 320–420 px get a labelled 2×2 time cluster so rewind, pause, play and fast-forward all
+  stay on screen; movement targets are 44 px tall.
+- Arabic keeps the physical pad and time order (left/right, rewind → fast) instead of mirroring them.
+- Short landscape viewports dock the hint as a compact side card instead of covering the board.
+- Styled thin scrollbars replace the default white browser bar in menus and the chamber map.
+- A branded boot layer plus Android 12 splash theme remove the black frame between launch and title.
+- Desktop players see a compact keyboard legend in the HUD.
+
 ### Visual polish
 - Official nRnWorld studio mark on the credits screen.
 - A hand-drawn inline SVG icon set replaces every text glyph in the HUD (undo, restart, hint, pause,
@@ -37,6 +48,7 @@ Native release: the same campaign, now packaged for Android and iOS.
 - Floor light pools around live anchors, dials and drones.
 - Brass rim light on wall edges and a soft slab shadow under the chamber.
 - Glassier HUD chips, a hairline under the top bar and deeper control shadows.
+- Ambient clockwork halo and rings behind the title, and a matching boot screen using the app icon.
 
 ## 1.0.0 — 2026-10-24
 

@@ -35,6 +35,7 @@ export default {
 
   'hud.moves': 'نبضات',
   'hud.par': 'المعيار',
+  'hud.keys': 'الأسهم / WASD للحركة · مسافة للانتظار · 1–4 للوقت',
   'hud.undo': 'أعِد خطوة',
   'hud.restart': 'أعد الحجرة',
   'hud.pause': 'إيقاف مؤقت',

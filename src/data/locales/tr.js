@@ -35,6 +35,7 @@ export default {
 
   'hud.moves': 'Tik',
   'hud.par': 'Par',
+  'hud.keys': 'Oklar / WASD hareket · Boşluk bekle · 1–4 zaman',
   'hud.undo': 'Bir adım geri sar',
   'hud.restart': 'Odayı yeniden başlat',
   'hud.pause': 'Duraklat',

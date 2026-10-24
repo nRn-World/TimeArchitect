@@ -35,6 +35,7 @@ export default {
 
   'hud.moves': 'Tick',
   'hud.par': 'Par',
+  'hud.keys': 'Pilar / WASD flytta · Mellanslag vänta · 1–4 tid',
   'hud.undo': 'Spola ett steg',
   'hud.restart': 'Börja om kammaren',
   'hud.pause': 'Paus',

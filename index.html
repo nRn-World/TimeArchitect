@@ -15,6 +15,13 @@
     <div id="app">
       <canvas id="stage" aria-hidden="true"></canvas>
 
+      <div id="boot" class="boot" aria-hidden="true">
+        <img class="boot__mark" src="assets/icon.svg" alt="" width="84" height="84" />
+        <p class="boot__title">Time Architect</p>
+        <span class="boot__line"><i></i></span>
+        <p class="boot__studio">nRnWorld</p>
+      </div>
+
       <div id="hud" class="hud" hidden>
         <header class="hud__top">
           <div class="hud__titles">
@@ -44,6 +51,8 @@
           </div>
 
           <div class="objects" id="objects" role="listbox" aria-label="Chronowork objects"></div>
+
+          <span class="keys" id="hud-keys"></span>
 
           <div class="rates" id="rates"></div>
         </div>

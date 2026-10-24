@@ -262,15 +262,22 @@ export class Scene {
       iso(0, level.h - 1),
       iso(level.w - 1, level.h - 1)
     ];
-    const minX = Math.min(...corners.map((c) => c.x)) - TW * 0.7;
-    const maxX = Math.max(...corners.map((c) => c.x)) + TW * 0.7;
-    const minY = Math.min(...corners.map((c) => c.y)) - WALL_H - 46;
-    const maxY = Math.max(...corners.map((c) => c.y)) + TH * 0.9;
+    // Include the wall thickness on both sides, otherwise the outermost walls
+    // are clipped exactly at the viewport edge on wide screens. Narrow screens
+    // keep a tighter frame so the chamber stays immersive.
+    const compact = this.width < 720;
+    const edge = TW * (compact ? 0.8 : 0.98);
+    const minX = Math.min(...corners.map((c) => c.x)) - edge;
+    const maxX = Math.max(...corners.map((c) => c.x)) + edge;
+    const minY = Math.min(...corners.map((c) => c.y)) - WALL_H - 52;
+    const maxY = Math.max(...corners.map((c) => c.y)) + TH;
     const spanX = maxX - minX;
     const spanY = maxY - minY;
-    const padding = 20;
+    const padding = compact ? 18 : 24;
     const scale = Math.min((this.width - padding * 2) / spanX, (this.height - padding * 2) / spanY);
-    const safeScale = Math.max(0.34, Math.min(1.5, scale));
+    // The board is a diorama, not a wallpaper: cap it so the HUD keeps its own
+    // breathing room on desktop and the walls never run off the screen.
+    const safeScale = Math.max(0.28, Math.min(1.05, scale));
     this.camera = {
       scale: safeScale,
       ox: this.width / 2 - ((minX + maxX) / 2) * safeScale,
