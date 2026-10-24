@@ -1,0 +1,21 @@
+{
+  "appId": "com.nrnworld.timearchitect",
+  "appName": "Time Architect",
+  "webDir": "dist",
+  "loggingBehavior": "debug",
+  "backgroundColor": "#05080e",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#05080e",
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "backgroundColor": "#05080e",
+    "contentInset": "never",
+    "limitsNavigationsToAppBoundDomains": true
+  }
+}

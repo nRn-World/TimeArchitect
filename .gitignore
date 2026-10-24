@@ -1,0 +1,33 @@
+node_modules/
+.dev-server.log
+.dev-server.pid
+.DS_Store
+Thumbs.db
+*.local
+
+# generated web bundle for the native shells
+dist/
+
+# Android build output and machine-local paths
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/keystore.properties
+*.jks
+*.keystore
+
+# iOS build output, pods and user state
+ios/App/Pods/
+ios/App/build/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+ios/DerivedData/
+
+# local QA artefacts
+screenshots/*-small.png
+
+# generated native web bundles (run npm run native:sync)
+android/app/src/main/assets/public/
+ios/App/App/public/

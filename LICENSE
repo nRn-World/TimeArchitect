@@ -1,0 +1,58 @@
+SPDX-License-Identifier: LicenseRef-nRnWorld-Educational-1.0
+
+Time Architect — By nRnWorld
+Copyright (c) 2026 nRnWorld. All rights reserved except as expressly granted below.
+
+This license is NOT an OSI-approved open source license.
+
+1. GRANT
+
+Subject to the conditions below, you are granted a worldwide, royalty-free,
+non-exclusive right to:
+
+  a) download, view and study the source code of this project;
+  b) modify the source code and create derivative works;
+  c) use the project and derivative works solely for non-commercial
+     educational purposes.
+
+The exact phrase "By nRnWorld" must remain prominent in this license file and
+in all redistributed source code, documentation and visible credits.
+
+2. PROHIBITED USES
+
+Without separate prior written permission from bynrnworld@gmail.com, you may not:
+
+  a) sell the project or any derivative work;
+  b) distribute the project or any derivative work as part of a monetized
+     product or service;
+  c) reuse the project or any derivative work in advertising-supported products
+     or services;
+  d) use the project or any derivative work in sponsorship, promotion or
+     paid client work;
+  e) otherwise exploit the project or any derivative work for commercial
+     advantage.
+
+3. ATTRIBUTION
+
+Any permitted redistribution must retain this license, the copyright notice,
+and a clear, visible credit reading "By nRnWorld".
+
+4. THIRD-PARTY MATERIALS
+
+Third-party assets and licenses are listed separately in THIRD_PARTY_NOTICES.md.
+Those materials remain governed by their own terms.
+
+5. NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+6. NOTICE
+
+This is a custom source-available license, not an open source license. The
+owner should obtain legal review before any public commercial release.

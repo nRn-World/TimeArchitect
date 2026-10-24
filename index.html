@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#05080e" />
+    <meta name="description" content="Time Architect — rewind, pause and fast-forward individual objects to solve deterministic puzzle chambers. By nRnWorld." />
+    <title>Time Architect — By nRnWorld</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icon-180.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="stage" aria-hidden="true"></canvas>
+
+      <div id="hud" class="hud" hidden>
+        <header class="hud__top">
+          <div class="hud__titles">
+            <span class="hud__level" id="hud-level"></span>
+            <span class="hud__sub" id="hud-sub"></span>
+          </div>
+          <div class="hud__stats">
+            <span class="stat" id="hud-moves"></span>
+            <span class="stat stat--muted" id="hud-par"></span>
+            <span class="stat stat--anchor" id="hud-anchors"></span>
+          </div>
+          <div class="hud__tools">
+            <button class="iconbtn" data-action="undo" id="hud-undo" aria-label="Rewind step"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+            <button class="iconbtn" data-action="restart" id="hud-restart" aria-label="Restart chamber"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 11a8 8 0 1 0-2.35 6.35"/><path d="M20 4v7h-7"/></svg></button>
+            <button class="iconbtn" data-action="hint" id="hud-hint" aria-label="Show hint"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4.2 12.6c.75.56 1.2 1.35 1.2 2.4h6c0-1.05.45-1.84 1.2-2.4A7 7 0 0 0 12 2Z"/></svg></button>
+            <button class="iconbtn" data-action="pause" id="hud-pause" aria-label="Pause"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="7" y="5" width="3.6" height="14" rx="1.3"/><rect x="13.4" y="5" width="3.6" height="14" rx="1.3"/></svg></button>
+          </div>
+        </header>
+
+        <div class="hud__bottom">
+          <div class="pad" id="pad" aria-label="Movement">
+            <button class="pad__btn pad__btn--up" data-move="up" aria-label="Up"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></button>
+            <button class="pad__btn pad__btn--left" data-move="left" aria-label="Left"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg></button>
+            <button class="pad__btn pad__btn--wait" data-move="wait" aria-label="Wait one tick"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8" opacity="0.32"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/></svg></button>
+            <button class="pad__btn pad__btn--right" data-move="right" aria-label="Right"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="M12 19l7-7-7-7"/></svg></button>
+            <button class="pad__btn pad__btn--down" data-move="down" aria-label="Down"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg></button>
+          </div>
+
+          <div class="objects" id="objects" role="listbox" aria-label="Chronowork objects"></div>
+
+          <div class="rates" id="rates"></div>
+        </div>
+
+        <div class="hintcard" id="hint" hidden>
+          <span class="hintcard__icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3l2.1 5.3 5.7.4-4.4 3.6 1.4 5.5L12 14.8 7.2 17.8l1.4-5.5L4.2 8.7l5.7-.4z"/></svg></span>
+          <p class="hintcard__text" id="hint-text"></p>
+          <button class="iconbtn iconbtn--sm" data-action="dismiss-hint" aria-label="Close hint"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        </div>
+
+        <div class="toast" id="toast" role="status" hidden></div>
+        <div class="banner" id="banner" hidden></div>
+      </div>
+
+      <div id="ui" class="layer"></div>
+    </div>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

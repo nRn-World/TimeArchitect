@@ -1,0 +1,31 @@
+{
+  "name": "time-architect",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Time Architect - a deterministic time-manipulation puzzle game. By nRnWorld.",
+  "license": "LicenseRef-nRnWorld-Educational-1.0",
+  "scripts": {
+    "dev": "node tools/serve.mjs",
+    "start": "node tools/serve.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "solve": "node tools/solve.mjs",
+    "build:web": "node tools/build-web.mjs",
+    "icons": "python tools/make-icons.py",
+    "native:sync": "node tools/build-web.mjs && cap sync",
+    "android:debug": "npm run native:sync && cd android && ./gradlew assembleDebug",
+    "android:bundle": "npm run native:sync && cd android && ./gradlew bundleRelease",
+    "ios:sync": "npm run native:sync",
+    "ios:open": "cap open ios"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/cli": "^7.6.9",
+    "@capacitor/core": "^7.6.9",
+    "@capacitor/ios": "^7.6.9"
+  }
+}
