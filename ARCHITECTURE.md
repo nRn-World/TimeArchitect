@@ -5,7 +5,7 @@
 Time Architect is a dependency-free web game built from ES modules:
 
 - **Domain**: a pure, deterministic, tick-based simulation (`src/core/`).
-- **Presentation**: a procedural isometric canvas renderer (`src/render/scene.js`) plus DOM screens
+- **Presentation**: a procedural top-down canvas renderer (`src/render/scene.js`) plus DOM screens
   and HUD (`src/ui/screens.js`, `styles.css`).
 - **Application**: a small controller (`src/game.js`) that owns the session, persistence, locale, audio,
   selection and event wiring.
@@ -92,15 +92,16 @@ This guarantees the campaign actually exercises the core mechanic.
 
 ## Rendering
 
-- 2:1 isometric projection with `TW=96`, `TH=48`, wall height 66 world units.
-- The camera fits the chamber into the canvas with padding, clamped to `0.34–1.5`.
-- Tiles and objects are merged into one depth-sorted list by `x+y`, with objects offset half a depth.
-- Art is procedural: stone gradients, brass edges, clock rings, energy bars, crystal facets, hooded
-  Architect, rotating halos, ground shadows, dust motes, particles and expanding rings.
-- Palettes: `ink`, `brass`, `verdant`, `ember`, `cosmic`; each chamber picks one.
-- Quality tiers: `low` (no shadows/particles, DPR 1), `medium` (halved particles), `high` (all effects,
-  DPR up to 2).
-- Reduced motion disables ambient motion, particle spawning, camera shake and position easing.
+- A top-down grid uses 64-unit square tiles. The camera fits the entire chamber into the space
+  between the HUD and controls; landscape layouts reserve side columns for the controls.
+- The procedural canvas draws a floating board, walls, walkable tiles, bridges, gates, mechanisms,
+  drones, anchors and the Architect. Five palettes give the chapters distinct atmospheres.
+- Dots preview adjacent moves using the simulation; danger is marked with an exclamation point.
+  Optional ghost outlines show the next drone position and tiles that will close.
+- Tapping an adjacent walkable tile makes one move. Tapping a mechanism or controlled tile selects
+  its object. Hit testing and drawing share the same camera and grid coordinates.
+- Reduced motion disables ambient animation and position easing; low quality limits pixel ratio
+  and glow. The illustrated menu art is a local, offline-cached asset.
 
 ## UI and input
 

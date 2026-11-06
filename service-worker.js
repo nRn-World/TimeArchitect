@@ -1,6 +1,6 @@
 // Offline cache for Time Architect. The game shell is cached on install,
 // so the campaign is playable with no network at all.
-const CACHE = 'time-architect-v1.1.0';
+const CACHE = 'time-architect-v2.0.0';
 
 const ASSETS = [
   './',
@@ -8,6 +8,8 @@ const ASSETS = [
   'styles.css',
   'manifest.webmanifest',
   'assets/icon.svg',
+  'assets/chronicle-hero.webp',
+  'assets/new-world.webp',
   'assets/icon-192.png',
   'assets/icon-512.png',
   'assets/icon-180.png',

@@ -18,7 +18,7 @@ held still at a time.
 
 - **A complete 12-chamber campaign** with a tutorial curve, finale and ending.
 - **A deterministic simulation** shared by the game, the tests and an automated solver.
-- **An original isometric renderer** drawn procedurally on canvas — no game engine, no image packs.
+- **A new top-down puzzle board** drawn procedurally on canvas, with clearer hazards, movement previews and a distinct palette for each chapter.
 - **Seven languages** (English, Swedish, Turkish, Spanish, Arabic with full RTL, French, Japanese),
   with local flag assets and per-app language persistence.
 - **Offline-first PWA and native apps**: an installable web build, plus Capacitor 7 Android and iOS
@@ -60,12 +60,12 @@ The web build alone has no build step and no runtime dependency.
 
 | Action | Keyboard | Touch / pointer |
 | --- | --- | --- |
-| Walk | Arrows or WASD | Swipe, or the on-screen pad |
+| Walk | Arrows or WASD | Tap an adjacent glowing tile, swipe, or use the on-screen pad |
 | Wait one tick | Space | Centre button of the pad |
 | Undo a step | Z / Backspace | Undo button |
 | Restart chamber | R | Restart button |
 | Pause | Esc / P | Pause button |
-| Select object | Tab / Q / E | Tap the dial or drone, or the object strip |
+| Select object | Q / E | Tap the dial or drone, or the object strip |
 | Rewind / freeze / play / fast | 1 / 2 / 3 / 4 | Time buttons |
 | Show hint | H | `?` button |
 
@@ -86,7 +86,7 @@ Gamepad: D-pad or left stick to walk, A wait, B undo, X select next, Y pause, LB
 index.html              app shell
 styles.css              responsive UI, RTL, accessibility themes
 src/core/               deterministic simulation, levels, solver, save, audio, input, i18n
-src/render/scene.js     isometric canvas renderer and effects
+src/render/scene.js     top-down canvas renderer and effects
 src/ui/screens.js       screens, HUD templates, modals
 src/data/levels.js      12 handcrafted chambers
 src/data/locales/       seven complete translations

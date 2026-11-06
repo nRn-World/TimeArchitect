@@ -184,6 +184,13 @@ export function applyAction(level, state, action) {
   return { state, ok: false, events: [] };
 }
 
+/** Predict an action without mutating the current state. This is guidance,
+ * not a rules change: dangerous actions remain available to the player. */
+export function previewAction(level, state, action) {
+  const result = applyAction(level, state, action);
+  return !result.ok ? 'blocked' : result.state.dead ? 'danger' : 'safe';
+}
+
 /** Compact key for solver visited sets. */
 export function stateKey(state) {
   return `${state.px},${state.py}|${state.phases.join('.')}|${state.rates.join('.')}|${state.got.map((g) => (g ? 1 : 0)).join('')}`;

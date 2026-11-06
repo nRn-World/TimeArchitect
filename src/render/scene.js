@@ -1,1092 +1,254 @@
-// Original isometric renderer for Time Architect.
-// Everything is drawn procedurally on a 2D canvas: no external art assets.
+// A clear, top-down diorama for Time Architect. The simulation remains the
+// source of truth; all paths, previews and hit tests use the same grid.
 import { TILE, controlledTileOpen } from '../core/level.js';
-import { hash2, mod } from '../core/math.js';
+import { previewAction } from '../core/sim.js';
+import { mod } from '../core/math.js';
 
-const TW = 96;
-const TH = 48;
-const WALL_H = 66;
+const CELL = 64;
 const TAU = Math.PI * 2;
-
-const PALETTES = {
-  ink: {
-    bg0: '#04070c',
-    bg1: '#0b1420',
-    stoneA: '#263c50',
-    stoneB: '#1c2c3c',
-    slab: '#101b27',
-    wall: '#101b28',
-    wallTop: '#2c4257',
-    edge: '#43617d',
-    accent: '#6fe6ff',
-    warm: '#ffc76b',
-    danger: '#ff5f7a',
-    void: '#010307',
-    rune: '#356080',
-    crystal: '#ffd27a'
-  },
-  brass: {
-    bg0: '#0a0705',
-    bg1: '#1a120a',
-    stoneA: '#2b2118',
-    stoneB: '#221a12',
-    slab: '#140f0a',
-    wall: '#1a120b',
-    wallTop: '#4a3720',
-    edge: '#7a5a30',
-    accent: '#ffd07a',
-    warm: '#ffe2a6',
-    danger: '#ff6b5c',
-    void: '#050302',
-    rune: '#5a4426',
-    crystal: '#ffe29a'
-  },
-  verdant: {
-    bg0: '#03090a',
-    bg1: '#08171a',
-    stoneA: '#152a25',
-    stoneB: '#10221e',
-    slab: '#081210',
-    wall: '#0b1a17',
-    wallTop: '#20463a',
-    edge: '#2f6b56',
-    accent: '#8bffc8',
-    warm: '#ffe08a',
-    danger: '#ff7a6b',
-    void: '#010605',
-    rune: '#245244',
-    crystal: '#b6ffdc'
-  },
-  ember: {
-    bg0: '#0a0405',
-    bg1: '#1d0c0d',
-    stoneA: '#2c1a1a',
-    stoneB: '#231414',
-    slab: '#130a0b',
-    wall: '#1a0f10',
-    wallTop: '#4d2a26',
-    edge: '#7c3f33',
-    accent: '#ff9d6e',
-    warm: '#ffd39a',
-    danger: '#ff4f6b',
-    void: '#060203',
-    rune: '#5c2f28',
-    crystal: '#ffc08a'
-  },
-  cosmic: {
-    bg0: '#05040e',
-    bg1: '#100d24',
-    stoneA: '#1c1936',
-    stoneB: '#16132c',
-    slab: '#0b0918',
-    wall: '#100d20',
-    wallTop: '#342c62',
-    edge: '#4c3f8c',
-    accent: '#b79cff',
-    warm: '#ffd6a0',
-    danger: '#ff6193',
-    void: '#020106',
-    rune: '#332a63',
-    crystal: '#e0c9ff'
-  }
+const THEMES = {
+  ink: { sky: '#233861', light: '#83d7d3', stone: '#e2e4dc', wall: '#668695', floor: '#f4eee0' },
+  brass: { sky: '#634757', light: '#f6c68e', stone: '#e9d6bd', wall: '#a47e75', floor: '#fff0d8' },
+  verdant: { sky: '#285a61', light: '#9ae9bc', stone: '#cce2d0', wall: '#64968a', floor: '#e8f1de' },
+  ember: { sky: '#644153', light: '#ffc398', stone: '#eed8cb', wall: '#a17c7f', floor: '#ffecdc' },
+  cosmic: { sky: '#423c70', light: '#d5b8ff', stone: '#ded9ee', wall: '#827aa2', floor: '#f3eaf8' }
 };
+const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
-const iso = (x, y) => ({ x: (x - y) * (TW / 2), y: (x + y) * (TH / 2) });
-
-function diamondPath(ctx, cx, cy, w, h) {
+function rounded(ctx, x, y, w, h, r, color, stroke) {
   ctx.beginPath();
-  ctx.moveTo(cx, cy - h / 2);
-  ctx.lineTo(cx + w / 2, cy);
-  ctx.lineTo(cx, cy + h / 2);
-  ctx.lineTo(cx - w / 2, cy);
-  ctx.closePath();
+  ctx.roundRect(x, y, w, h, r);
+  if (color) { ctx.fillStyle = color; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.stroke(); }
 }
-
-function polygon(ctx, points, fill, stroke, lineWidth = 1) {
-  ctx.beginPath();
-  points.forEach((point, index) => {
-    if (index === 0) ctx.moveTo(point.x, point.y);
-    else ctx.lineTo(point.x, point.y);
-  });
-  ctx.closePath();
-  if (fill) {
-    ctx.fillStyle = fill;
-    ctx.fill();
-  }
-  if (stroke) {
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineWidth;
-    ctx.stroke();
-  }
-}
-
-function shade(hex, amount) {
-  const value = hex.replace('#', '');
-  const num = parseInt(value.length === 3 ? value.split('').map((c) => c + c).join('') : value, 16);
-  const r = Math.max(0, Math.min(255, ((num >> 16) & 255) + amount));
-  const g = Math.max(0, Math.min(255, ((num >> 8) & 255) + amount));
-  const b = Math.max(0, Math.min(255, (num & 255) + amount));
-  return `rgb(${r},${g},${b})`;
-}
-
-function withAlpha(hex, alpha) {
-  const value = hex.replace('#', '');
-  const num = parseInt(value.length === 3 ? value.split('').map((c) => c + c).join('') : value, 16);
-  return `rgba(${(num >> 16) & 255},${(num >> 8) & 255},${num & 255},${alpha})`;
+function circle(ctx, x, y, r, fill, stroke, width = 1) {
+  ctx.beginPath(); ctx.arc(x, y, r, 0, TAU);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = width; ctx.stroke(); }
 }
 
 export class Scene {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d', { alpha: false });
-    this.level = null;
-    this.state = null;
-    this.palette = PALETTES.ink;
     this.options = { reducedMotion: false, highContrast: false, quality: 'high', ghosts: true };
-    this.time = 0;
-    this.dt = 0;
-    this.running = false;
-    this.selected = null;
-    this.highlight = new Set();
-    this.ghosts = null;
-    this.camera = { scale: 1, ox: 0, oy: 0 };
-    this.vis = { x: 0, y: 0 };
-    this.particles = [];
-    this.rings = [];
-    this.shake = 0;
-    this.flash = 0;
-    this.flashColor = '#ff5f7a';
-    this.motes = Array.from({ length: 26 }, (_, index) => ({
-      x: (index * 137) % 1000 / 1000,
-      y: (index * 311) % 1000 / 1000,
-      z: 0.3 + ((index * 53) % 100) / 140,
-      speed: 0.004 + ((index * 17) % 40) / 9000
-    }));
+    this.level = null; this.state = null; this.selected = null;
+    this.highlight = new Set(); this.ghosts = null;
+    this.time = 0; this.running = false; this.effects = [];
+    this.vis = { x: 0, y: 0 }; this.camera = { scale: 1, ox: 0, oy: 0 };
     this.boundFrame = this.frame.bind(this);
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas);
     this.resize();
   }
-
-  setOptions(options) {
-    this.options = { ...this.options, ...options };
-    this.resize();
-  }
-
+  setOptions(options) { this.options = { ...this.options, ...options }; this.resize(); }
   load(level, state) {
-    this.level = level;
-    this.state = state;
-    this.palette = PALETTES[level.palette] || PALETTES.ink;
-    this.tiles = [];
-    for (let y = 0; y < level.h; y += 1) {
-      for (let x = 0; x < level.w; x += 1) {
-        const tile = level.base[y * level.w + x];
-        if (tile === TILE.VOID && !this.hasNeighbourFloor(x, y)) continue;
-        const point = iso(x, y);
-        this.tiles.push({ x, y, tile, sx: point.x, sy: point.y, z: x + y, key: y * level.w + x });
-      }
-    }
-    this.tiles.sort((a, b) => a.z - b.z || a.x - b.x);
-    this.vis.x = state?.px ?? level.start.x;
-    this.vis.y = state?.py ?? level.start.y;
-    this.selected = null;
-    this.highlight.clear();
-    this.particles = [];
-    this.rings = [];
-    this.shake = 0;
-    this.flash = 0;
-    this.computeCamera();
-    this.active = true;
+    this.level = level; this.state = state; this.theme = THEMES[level.palette] || THEMES.ink;
+    this.vis = { x: state.px, y: state.py }; this.selected = null;
+    this.highlight.clear(); this.effects = []; this.computeCamera();
   }
-
-  clear() {
-    this.active = false;
-    this.level = null;
-    this.state = null;
-  }
-
-  hasNeighbourFloor(x, y) {
-    const level = this.level;
-    const neighbours = [
-      [x + 1, y],
-      [x - 1, y],
-      [x, y + 1],
-      [x, y - 1]
-    ];
-    return neighbours.some(([nx, ny]) => {
-      if (nx < 0 || ny < 0 || nx >= level.w || ny >= level.h) return false;
-      const tile = level.base[ny * level.w + nx];
-      return tile !== TILE.VOID;
-    });
-  }
-
-  sync(state) {
-    if (!this.level || !state) return;
-    this.state = state;
-  }
-
-  setSelection(id) {
-    this.selected = id;
-  }
-
-  setHighlight(keys) {
-    this.highlight = new Set(keys || []);
-  }
-
-  setGhosts(ghosts) {
-    this.ghosts = ghosts;
-  }
-
+  clear() { this.level = null; this.state = null; }
+  sync(state) { this.state = state; }
+  setSelection(id) { this.selected = id; }
+  setHighlight(keys) { this.highlight = new Set(keys || []); }
+  setGhosts(ghosts) { this.ghosts = ghosts; }
   resize() {
     const rect = this.canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, this.options.quality === 'low' ? 1 : 2);
-    const width = Math.max(1, Math.round(rect.width));
-    const height = Math.max(1, Math.round(rect.height));
-    this.dpr = dpr;
-    this.width = width;
-    this.height = height;
-    this.canvas.width = Math.round(width * dpr);
-    this.canvas.height = Math.round(height * dpr);
+    this.width = Math.max(1, Math.round(rect.width)); this.height = Math.max(1, Math.round(rect.height));
+    this.dpr = Math.min(window.devicePixelRatio || 1, this.options.quality === 'low' ? 1 : 2);
+    this.canvas.width = Math.round(this.width * this.dpr); this.canvas.height = Math.round(this.height * this.dpr);
     this.computeCamera();
   }
-
   computeCamera() {
-    if (!this.level) {
-      this.camera = { scale: 1, ox: (this.width || 0) / 2, oy: (this.height || 0) / 2 };
-      return;
-    }
-    const level = this.level;
-    const corners = [
-      iso(0, 0),
-      iso(level.w - 1, 0),
-      iso(0, level.h - 1),
-      iso(level.w - 1, level.h - 1)
-    ];
-    // Include the wall thickness on both sides, otherwise the outermost walls
-    // are clipped exactly at the viewport edge on wide screens. Narrow screens
-    // keep a tighter frame so the chamber stays immersive.
-    const compact = this.width < 720;
-    const edge = TW * (compact ? 0.8 : 0.98);
-    const minX = Math.min(...corners.map((c) => c.x)) - edge;
-    const maxX = Math.max(...corners.map((c) => c.x)) + edge;
-    const minY = Math.min(...corners.map((c) => c.y)) - WALL_H - 52;
-    const maxY = Math.max(...corners.map((c) => c.y)) + TH;
-    const spanX = maxX - minX;
-    const spanY = maxY - minY;
-    const padding = compact ? 18 : 24;
-    const scale = Math.min((this.width - padding * 2) / spanX, (this.height - padding * 2) / spanY);
-    // The board is a diorama, not a wallpaper: cap it so the HUD keeps its own
-    // breathing room on desktop and the walls never run off the screen.
-    const safeScale = Math.max(0.28, Math.min(1.05, scale));
-    this.camera = {
-      scale: safeScale,
-      ox: this.width / 2 - ((minX + maxX) / 2) * safeScale,
-      oy: this.height / 2 - ((minY + maxY) / 2) * safeScale
-    };
+    if (!this.level) return;
+    const mobile = this.width <= 720;
+    const landscape = this.height < 620 && this.width > this.height;
+    // Reserve room for the HUD and controls so the board is never hidden by them.
+    const top = landscape ? (mobile ? 104 : 72) : mobile ? 190 : 96;
+    const bottom = landscape ? 12 : mobile ? (this.width <= 420 ? 245 : 225) : 150;
+    const availableHeight = Math.max(150, this.height - top - bottom);
+    const availableWidth = Math.max(180, this.width - (landscape ? 350 : mobile ? 26 : 80));
+    const scale = Math.max(.2, Math.min(1.12, availableWidth / (this.level.w * CELL), availableHeight / (this.level.h * CELL)));
+    this.camera = { scale, ox: (this.width - this.level.w * CELL * scale) / 2, oy: top + (availableHeight - this.level.h * CELL * scale) / 2 };
   }
-
-  start() {
-    if (this.running) return;
-    this.running = true;
-    this.last = performance.now();
-    this.canvas.ownerDocument.defaultView.requestAnimationFrame(this.boundFrame);
-  }
-
-  stop() {
-    this.running = false;
-  }
-
+  start() { if (!this.running) { this.running = true; this.last = performance.now(); requestAnimationFrame(this.boundFrame); } }
+  stop() { this.running = false; }
   frame(now) {
     if (!this.running) return;
-    const dt = Math.min(48, now - (this.last || now));
-    this.last = now;
-    this.dt = dt;
+    const dt = Math.min(50, now - this.last); this.last = now;
     if (!this.options.reducedMotion) this.time += dt;
-    this.updateEffects(dt);
-    this.render();
-    this.canvas.ownerDocument.defaultView.requestAnimationFrame(this.boundFrame);
-  }
-
-  updateEffects(dt) {
-    const gravity = 0.0022 * dt * this.camera.scale;
-    for (const particle of this.particles) {
-      particle.life -= dt;
-      particle.x += particle.vx * dt;
-      particle.y += particle.vy * dt;
-      particle.vy += gravity;
-      particle.vx *= 0.995;
+    this.effects = this.effects.filter(e => (e.life -= dt) > 0);
+    if (this.state) {
+      const f = this.options.reducedMotion ? 1 : Math.min(1, dt * .015);
+      this.vis.x += (this.state.px - this.vis.x) * f; this.vis.y += (this.state.py - this.vis.y) * f;
     }
-    this.particles = this.particles.filter((p) => p.life > 0);
-    for (const ring of this.rings) {
-      ring.life -= dt;
-      ring.r += dt * 0.06 * (this.options.reducedMotion ? 0 : 1);
-    }
-    this.rings = this.rings.filter((r) => r.life > 0);
-    this.shake = Math.max(0, this.shake - dt * 0.05);
-    this.flash = Math.max(0, this.flash - dt * 0.0022);
-    if (this.options.reducedMotion) this.shake = 0;
+    this.render(); requestAnimationFrame(this.boundFrame);
   }
-
-  spawnParticles(sx, sy, color, count, spread = 1) {
-    if (this.options.quality === 'low' || this.options.reducedMotion) return;
-    const total = this.options.quality === 'medium' ? Math.ceil(count * 0.5) : count;
-    for (let i = 0; i < total; i += 1) {
-      const angle = Math.random() * TAU;
-      const speed = (0.03 + Math.random() * 0.09) * spread;
-      this.particles.push({
-        x: sx,
-        y: sy,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 0.04 * spread,
-        life: 420 + Math.random() * 620,
-        maxLife: 1000,
-        size: 1.4 + Math.random() * 2.6,
-        color
-      });
-    }
-  }
-
-  spawnRing(sx, sy, color, radius = 40) {
-    this.rings.push({ x: sx, y: sy, r: radius * 0.25, color, life: 700, maxLife: 700 });
-  }
-
-  effectStep(from, to) {
-    if (!this.level) return;
-    const a = iso(from.x, from.y);
-    const b = iso(to.x, to.y);
-    this.spawnParticles(b.x, b.y - 4, withAlpha(this.palette.accent, 0.85), 5, 0.7);
-    this.spawnRing(b.x, b.y, withAlpha(this.palette.accent, 0.35), 26);
-    this.lastStep = { a, b };
-  }
-
-  effectCollect(x, y) {
-    const point = iso(x, y);
-    this.spawnParticles(point.x, point.y - 26, this.palette.crystal, 26, 1.6);
-    this.spawnRing(point.x, point.y, withAlpha(this.palette.crystal, 0.5), 56);
-    this.flash = 0.25;
-    this.flashColor = this.palette.crystal;
-  }
-
-  effectFail(x, y) {
-    const point = iso(x, y);
-    this.spawnParticles(point.x, point.y - 18, this.palette.danger, 34, 1.9);
-    this.spawnRing(point.x, point.y, withAlpha(this.palette.danger, 0.6), 70);
-    this.flash = 1;
-    this.flashColor = this.palette.danger;
-    this.shake = 14;
-  }
-
-  effectWin() {
-    for (let i = 0; i < 3; i += 1) {
-      this.spawnRing(0, 0, withAlpha(this.palette.accent, 0.4), 80 + i * 50);
-    }
-    this.flash = 0.6;
-    this.flashColor = this.palette.accent;
-  }
-
+  effectStep(from, to) { this.effects.push({ ...to, life: 400, max: 400, color: '#71e5ce' }); }
+  effectCollect(x, y) { this.effects.push({ x, y, life: 900, max: 900, color: '#ffe39a' }); }
+  effectFail(x, y) { this.effects.push({ x, y, life: 700, max: 700, color: '#ff8a87' }); }
+  effectWin() { if (this.state) this.effectCollect(this.state.px, this.state.py); }
   render() {
     const ctx = this.ctx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     this.drawBackground(ctx);
-    if (!this.level || !this.state) {
-      this.drawVignette(ctx);
-      return;
+    if (!this.level || !this.state) return;
+    const { ox, oy, scale } = this.camera;
+    ctx.save(); ctx.translate(ox, oy); ctx.scale(scale, scale);
+    this.drawBoard(ctx);
+    for (let y = 0; y < this.level.h; y++) for (let x = 0; x < this.level.w; x++) this.drawTile(ctx, x, y);
+    this.drawConnections(ctx);
+    this.drawPreviews(ctx);
+    this.level.objects.forEach(obj => this.drawObject(ctx, obj));
+    this.level.anchors.forEach(anchor => { if (!this.state.got[anchor.index]) this.drawAnchor(ctx, anchor); });
+    this.drawPlayer(ctx);
+    for (const e of this.effects) {
+      const age = 1 - e.life / e.max; ctx.globalAlpha = 1 - age;
+      circle(ctx, (e.x + .5) * CELL, (e.y + .5) * CELL, 10 + age * 30, null, e.color, 3);
     }
-    const { scale, ox, oy } = this.camera;
-    const shakeX = this.shake ? (Math.random() - 0.5) * this.shake : 0;
-    const shakeY = this.shake ? (Math.random() - 0.5) * this.shake : 0;
-
-    ctx.save();
-    ctx.translate(ox + shakeX, oy + shakeY);
-    ctx.scale(scale, scale);
-
-    // Soft slab shadow so the chamber floats above the ink.
-    const shadow = ctx.createRadialGradient(0, 190, 60, 0, 190, 460);
-    shadow.addColorStop(0, 'rgba(0,0,0,0.55)');
-    shadow.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = shadow;
-    ctx.beginPath();
-    ctx.ellipse(0, 190, (this.level.w + this.level.h) * 30, (this.level.w + this.level.h) * 10, 0, 0, TAU);
-    ctx.fill();
-
-    const drawables = [];
-    for (const tile of this.tiles) drawables.push({ z: tile.z * 2, kind: 'tile', tile });
-    const objects = this.collectObjects();
-    for (const object of objects) drawables.push({ z: object.z * 2 + 1, kind: 'object', object });
-    drawables.push({ z: (this.state.px + this.state.py) * 2 + 1.5, kind: 'player' });
-    drawables.sort((a, b) => a.z - b.z);
-
-    for (const entry of drawables) {
-      if (entry.kind === 'tile') this.drawTile(ctx, entry.tile);
-      else if (entry.kind === 'object') this.drawObject(ctx, entry.object);
-      else this.drawPlayer(ctx);
-    }
-
-    // Anchors are objectives: always draw them above the architecture so a wall
-    // can never hide the way forward.
-    const state = this.state;
-    for (const anchor of this.level.anchors) {
-      if (state.got[anchor.index]) continue;
-      this.drawAnchor(ctx, { anchor, x: anchor.x, y: anchor.y });
-    }
-
-    if (this.options.ghosts) this.drawGhosts(ctx);
-    this.drawEffects(ctx);
-    ctx.restore();
-
-    this.drawVignette(ctx);
-    if (this.flash > 0.01) {
-      ctx.globalAlpha = Math.min(0.5, this.flash * 0.4);
-      ctx.fillStyle = this.flashColor;
-      ctx.fillRect(0, 0, this.width, this.height);
-      ctx.globalAlpha = 1;
-    }
+    ctx.globalAlpha = 1; ctx.restore();
   }
-
   drawBackground(ctx) {
-    const { width, height } = this;
-    const gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, this.palette.bg1);
-    gradient.addColorStop(1, this.palette.bg0);
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
-
-    const cx = width / 2;
-    const cy = height * 0.46;
-    const radius = Math.min(width, height) * 0.62;
-    ctx.save();
-    ctx.globalAlpha = 0.14;
-    ctx.strokeStyle = this.palette.edge;
-    for (let i = 1; i <= 5; i += 1) {
-      ctx.beginPath();
-      ctx.lineWidth = i === 2 ? 1.6 : 0.8;
-      ctx.arc(cx, cy, radius * (i / 5), 0, TAU);
-      ctx.stroke();
+    const theme = this.theme || THEMES.ink;
+    const bg = ctx.createLinearGradient(0, 0, 0, this.height);
+    bg.addColorStop(0, '#101c39'); bg.addColorStop(.55, theme.sky); bg.addColorStop(1, '#142a43');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, this.width, this.height);
+    const glow = ctx.createRadialGradient(this.width * .5, this.height * .44, 0, this.width * .5, this.height * .44, this.width * .58);
+    glow.addColorStop(0, 'rgba(111,218,210,.20)'); glow.addColorStop(1, 'rgba(111,218,210,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, this.width, this.height);
+    for (let i = 0; i < 44; i++) {
+      const x = ((i * 167 + 83) % 997) / 997 * this.width;
+      const y = ((i * 283 + 31) % 991) / 991 * this.height;
+      const alpha = .25 + .18 * Math.sin(this.time * .001 + i);
+      circle(ctx, x, y, i % 7 === 0 ? 2 : 1, `rgba(232,252,244,${alpha})`);
     }
-    const spin = this.time * 0.00008;
-    for (let i = 0; i < 24; i += 1) {
-      const angle = spin + (i / 24) * TAU;
-      const inner = radius * 0.78;
-      const outer = radius * (i % 3 === 0 ? 0.92 : 0.86);
-      ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
-      ctx.lineTo(cx + Math.cos(angle) * outer, cy + Math.sin(angle) * outer);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    if (this.options.quality !== 'low' && !this.options.reducedMotion) {
-      ctx.save();
-      for (const mote of this.motes) {
-        const px = ((mote.x + this.time * mote.speed * 0.02) % 1) * width;
-        const py = ((mote.y - this.time * mote.speed * 0.01 + 1) % 1) * height;
-        ctx.globalAlpha = 0.16 * mote.z;
-        ctx.fillStyle = this.palette.accent;
-        ctx.beginPath();
-        ctx.arc(px, py, 1.4 + mote.z, 0, TAU);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
+    ctx.strokeStyle = 'rgba(190,241,230,.09)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(this.width / 2, this.height / 2, Math.min(this.width, this.height) * .36, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.arc(this.width / 2, this.height / 2, Math.min(this.width, this.height) * .43, 0, TAU); ctx.stroke();
   }
-
-  drawVignette(ctx) {
-    const { width, height } = this;
-    const gradient = ctx.createRadialGradient(width / 2, height * 0.48, Math.min(width, height) * 0.2, width / 2, height * 0.5, Math.max(width, height) * 0.75);
-    gradient.addColorStop(0, 'rgba(0,0,0,0)');
-    gradient.addColorStop(1, 'rgba(0,0,0,0.5)');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
+  drawBoard(ctx) {
+    const w = this.level.w * CELL, h = this.level.h * CELL;
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 38; ctx.shadowOffsetY = 22;
+    rounded(ctx, -12, -12, w + 24, h + 24, 24, '#334f60'); ctx.restore();
+    rounded(ctx, -8, -10, w + 16, h + 16, 20, '#acc9c5');
+    rounded(ctx, -3, -5, w + 6, h + 6, 16, '#536e79');
   }
-
-  collectObjects() {
-    const level = this.level;
-    const state = this.state;
-    const list = [];
-    level.objects.forEach((obj, index) => {
-      if (obj.kind === 'dial') {
-        list.push({ kind: 'dial', obj, index, x: obj.x, y: obj.y, z: obj.x + obj.y });
-      } else if (obj.kind === 'drone') {
-        const phase = mod(state.phases[index], obj.path.length);
-        const cell = obj.path[phase];
-        list.push({ kind: 'drone', obj, index, x: cell.x, y: cell.y, z: cell.x + cell.y + 0.35 });
-      }
-    });
-    return list;
-  }
-
-  drawTile(ctx, tile) {
-    const palette = this.palette;
-    const { sx, sy, tile: type } = tile;
-    const highContrast = this.options.highContrast;
+  drawTile(ctx, x, y) {
+    const type = this.level.base[y * this.level.w + x], px = x * CELL, py = y * CELL;
+    const theme = this.theme;
     if (type === TILE.VOID) {
-      ctx.fillStyle = palette.void;
-      diamondPath(ctx, sx, sy, TW * 0.98, TH * 0.98);
-      ctx.fill();
-      ctx.strokeStyle = withAlpha(palette.edge, highContrast ? 0.6 : 0.25);
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      rounded(ctx, px + 2, py + 2, CELL - 4, CELL - 4, 10, '#324c60');
+      circle(ctx, px + 18, py + 20, 2, 'rgba(185,236,225,.2)'); circle(ctx, px + 46, py + 42, 1.5, 'rgba(185,236,225,.2)');
       return;
     }
-
     if (type === TILE.WALL) {
-      const topY = sy - WALL_H;
-      const halfW = TW / 2;
-      const halfH = TH / 2;
-      const left = { x: sx - halfW, y: sy };
-      const right = { x: sx + halfW, y: sy };
-      const bottom = { x: sx, y: sy + halfH };
-      const top = { x: sx, y: sy - halfH };
-      polygon(ctx, [left, top, { x: top.x, y: top.y - WALL_H }, { x: left.x, y: left.y - WALL_H }], shade(palette.wall, -6));
-      polygon(ctx, [top, right, { x: right.x, y: right.y - WALL_H }, { x: top.x, y: top.y - WALL_H }], shade(palette.wall, 10));
-      diamondPath(ctx, sx, topY, TW, TH);
-      ctx.fillStyle = palette.wallTop;
-      ctx.fill();
-      ctx.strokeStyle = withAlpha(palette.edge, highContrast ? 0.85 : 0.5);
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.strokeStyle = withAlpha(palette.warm, 0.22);
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.moveTo(sx - halfW, sy);
-      ctx.lineTo(sx, sy + halfH);
-      ctx.lineTo(sx + halfW, sy);
-      ctx.stroke();
-      const glint = hash2(tile.x, tile.y, 3);
-      if (glint > 0.6) {
-        ctx.strokeStyle = withAlpha(palette.accent, 0.18);
-        ctx.beginPath();
-        ctx.moveTo(sx - halfW * 0.4, topY);
-        ctx.lineTo(sx, topY + halfH * 0.4);
-        ctx.lineTo(sx + halfW * 0.35, topY + halfH * 0.1);
-        ctx.stroke();
-      }
+      rounded(ctx, px + 2, py + 5, CELL - 4, CELL - 6, 10, '#466775');
+      rounded(ctx, px + 2, py + 2, CELL - 4, CELL - 9, 9, theme.wall);
+      rounded(ctx, px + 9, py + 8, CELL - 18, CELL - 22, 6, 'rgba(255,255,255,.10)');
       return;
     }
-
-    const slab = type === TILE.GATE || type === TILE.BRIDGE;
-    const base = slab ? shade(palette.slab, 10) : palette.stoneA;
-    const variation = hash2(tile.x, tile.y, 1) > 0.5 ? 6 : -4;
-    diamondPath(ctx, sx, sy, TW, TH);
-    const gradient = ctx.createLinearGradient(sx - TW / 2, sy - TH / 2, sx + TW / 2, sy + TH / 2);
-    gradient.addColorStop(0, shade(base, variation + 16));
-    gradient.addColorStop(1, shade(base, variation - 4));
-    ctx.fillStyle = gradient;
-    ctx.fill();
-    ctx.strokeStyle = withAlpha(palette.edge, highContrast ? 0.9 : 0.42);
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    if (!slab) {
-      this.drawLightPool(ctx, tile);
-      diamondPath(ctx, sx, sy, TW * 0.74, TH * 0.74);
-      ctx.strokeStyle = withAlpha(palette.rune, 0.5);
-      ctx.stroke();
-      const rune = hash2(tile.x, tile.y, 7);
-      if (rune > 0.72) {
-        ctx.strokeStyle = withAlpha(palette.accent, 0.16);
-        ctx.beginPath();
-        ctx.arc(sx, sy, TH * 0.22, 0.4, 2.4);
-        ctx.stroke();
-      }
-    }
-    if (type === TILE.PEDESTAL) {
-      const top = sy - 16;
-      polygon(ctx, [
-        { x: sx - TW * 0.26, y: sy - 2 },
-        { x: sx - TW * 0.18, y: top },
-        { x: sx + TW * 0.18, y: top },
-        { x: sx + TW * 0.26, y: sy - 2 }
-      ], shade(palette.wallTop, -18), withAlpha(palette.edge, 0.6));
-    }
-    if (type === TILE.GATE) this.drawGateTile(ctx, tile);
-    if (type === TILE.BRIDGE) this.drawBridgeTile(ctx, tile);
-  }
-
-  drawLightPool(ctx, tile) {
-    if (this.options.quality === 'low') return;
-    const palette = this.palette;
-    let strength = 0;
-    let color = palette.warm;
-    for (const anchor of this.level.anchors) {
-      if (this.state.got[anchor.index]) continue;
-      const distance = Math.abs(anchor.x - tile.x) + Math.abs(anchor.y - tile.y);
-      if (distance > 2) continue;
-      const value = (3 - distance) * 0.42;
-      if (value > strength) {
-        strength = value;
-        color = palette.crystal;
-      }
-    }
-    for (const obj of this.level.objects) {
-      if (obj.kind !== 'dial') continue;
-      const distance = Math.abs(obj.x - tile.x) + Math.abs(obj.y - tile.y);
-      if (distance > 2) continue;
-      const value = (3 - distance) * 0.3;
-      if (value > strength) {
-        strength = value;
-        color = palette.accent;
-      }
-    }
-    if (strength <= 0) return;
-    const { sx, sy } = tile;
-    ctx.save();
-    diamondPath(ctx, sx, sy, TW, TH);
-    ctx.clip();
-    const glow = ctx.createRadialGradient(sx, sy, 2, sx, sy, TW * 0.95);
-    glow.addColorStop(0, withAlpha(color, 0.34 * strength));
-    glow.addColorStop(0.55, withAlpha(color, 0.1 * strength));
-    glow.addColorStop(1, withAlpha(color, 0));
-    ctx.fillStyle = glow;
-    ctx.fillRect(sx - TW, sy - TH, TW * 2, TH * 2);
-    ctx.restore();
-  }
-
-  drawGateTile(ctx, tile) {
-    const state = this.state;
-    const palette = this.palette;
-    const open = controlledTileOpen(this.level, state, tile.x, tile.y);
-    const { sx, sy } = tile;
-    const height = 34;
-    ctx.save();
-    ctx.globalAlpha = open ? 0.28 : 1;
-    for (const side of [-1, 1]) {
-      const px = sx + side * TW * 0.3;
-      ctx.fillStyle = shade(palette.wallTop, -20);
-      ctx.beginPath();
-      ctx.moveTo(px - 4, sy);
-      ctx.lineTo(px - 2, sy - height);
-      ctx.lineTo(px + 2, sy - height);
-      ctx.lineTo(px + 4, sy);
-      ctx.closePath();
-      ctx.fill();
-    }
-    if (open) {
-      ctx.strokeStyle = withAlpha(palette.accent, 0.4);
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.moveTo(sx - TW * 0.28, sy - 4);
-      ctx.lineTo(sx + TW * 0.28, sy - 4);
-      ctx.stroke();
+    const controlled = type === TILE.GATE || type === TILE.BRIDGE;
+    const open = controlled && controlledTileOpen(this.level, this.state, x, y);
+    rounded(ctx, px + 2, py + 5, CELL - 4, CELL - 6, 10, '#a8b8af');
+    rounded(ctx, px + 2, py + 2, CELL - 4, CELL - 9, 9, controlled ? (open ? '#a3e3cb' : '#72868f') : theme.floor);
+    if (!controlled) {
+      rounded(ctx, px + 8, py + 8, CELL - 16, CELL - 21, 6, null, 'rgba(103,138,136,.13)');
+      if ((x * 7 + y * 11) % 5 === 0) circle(ctx, px + 48, py + 16, 2, 'rgba(106,147,138,.25)');
+    } else if (open) {
+      ctx.strokeStyle = '#56ad99'; ctx.lineWidth = 3;
+      for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(px + 13, py + 17 + i * 12); ctx.lineTo(px + 51, py + 17 + i * 12); ctx.stroke(); }
+      circle(ctx, px + 50, py + 12, 5, '#4aa48c');
     } else {
-      const bars = 5;
-      for (let i = 0; i < bars; i += 1) {
-        const t = (i + 0.5) / bars;
-        const bx = sx - TW * 0.28 + t * TW * 0.56;
-        const by = sy - height * 0.55 + Math.abs(0.5 - t) * 10;
-        ctx.strokeStyle = withAlpha(palette.accent, 0.5);
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(bx, by - height * 0.32);
-        ctx.lineTo(bx, by + height * 0.3);
-        ctx.stroke();
-      }
-      ctx.strokeStyle = withAlpha(palette.accent, 0.75);
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.moveTo(sx - TW * 0.28, sy - height * 0.6);
-      ctx.lineTo(sx + TW * 0.28, sy - height * 0.6);
-      ctx.stroke();
+      ctx.strokeStyle = '#b8c9c6'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
+      rounded(ctx, px + 11, py + 11, CELL - 22, CELL - 27, 5, null, '#b8c9c6'); ctx.setLineDash([]);
+      ctx.strokeStyle = '#e3ebdf'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(px + 26, py + 25); ctx.lineTo(px + 38, py + 37); ctx.moveTo(px + 38, py + 25); ctx.lineTo(px + 26, py + 37); ctx.stroke();
+    }
+  }
+  drawConnections(ctx) {
+    if (!this.highlight.size) return;
+    ctx.save(); ctx.strokeStyle = 'rgba(250,199,95,.95)'; ctx.lineWidth = 3; ctx.setLineDash([5, 5]);
+    for (const key of this.highlight) {
+      const x = key % this.level.w, y = Math.floor(key / this.level.w);
+      rounded(ctx, x * CELL + 5, y * CELL + 5, CELL - 10, CELL - 15, 8, null, 'rgba(248,196,88,.95)');
     }
     ctx.restore();
   }
-
-  drawBridgeTile(ctx, tile) {
-    const state = this.state;
-    const palette = this.palette;
-    const active = controlledTileOpen(this.level, state, tile.x, tile.y);
-    const { sx, sy } = tile;
-    ctx.save();
-    if (active) {
-      ctx.fillStyle = shade(palette.wallTop, -10);
-      diamondPath(ctx, sx, sy, TW * 0.9, TH * 0.9);
-      ctx.fill();
-      ctx.strokeStyle = withAlpha(palette.accent, 0.55);
-      ctx.lineWidth = 1.4;
-      ctx.stroke();
-      ctx.strokeStyle = withAlpha(palette.warm, 0.35);
-      for (let i = -1; i <= 1; i += 1) {
-        ctx.beginPath();
-        ctx.moveTo(sx - TW * 0.36, sy + i * 9);
-        ctx.lineTo(sx + TW * 0.36, sy + i * 9);
-        ctx.stroke();
-      }
-    } else {
-      ctx.globalAlpha = 0.42;
-      ctx.strokeStyle = withAlpha(palette.accent, 0.8);
-      ctx.setLineDash([6, 7]);
-      ctx.lineWidth = 1.4;
-      diamondPath(ctx, sx, sy, TW * 0.82, TH * 0.82);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.globalAlpha = 1;
+  drawPreviews(ctx) {
+    if (this.state.dead || this.state.won) return;
+    for (const [dir, [dx, dy]] of Object.entries(DIRS)) {
+      const status = previewAction(this.level, this.state, { type: 'move', dir });
+      if (status === 'blocked') continue;
+      const x = (this.state.px + dx + .5) * CELL, y = (this.state.py + dy + .5) * CELL;
+      circle(ctx, x, y + 13, 7, status === 'danger' ? '#e87864' : 'rgba(62,153,136,.65)');
+      if (status === 'danger') { ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('!', x, y + 17); }
     }
-    ctx.restore();
-  }
-
-  drawObject(ctx, entry) {
-    if (entry.kind === 'dial') this.drawDial(ctx, entry);
-    else if (entry.kind === 'drone') this.drawDrone(ctx, entry);
-    else if (entry.kind === 'anchor') this.drawAnchor(ctx, entry);
-  }
-
-  drawDial(ctx, entry) {
-    const { obj, index } = entry;
-    const state = this.state;
-    const palette = this.palette;
-    const point = iso(obj.x, obj.y);
-    const phase = state.phases[index];
-    const rate = state.rates[index];
-    const baseY = point.y - 22;
-    const isSelected = this.selected === obj.id;
-
-    ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.beginPath();
-    ctx.ellipse(point.x, point.y + 4, 26, 12, 0, 0, TAU);
-    ctx.fill();
-
-    const glowColor = rate === 0 ? palette.warm : rate < 0 ? '#c8a0ff' : rate > 1 ? palette.accent : palette.accent;
-    const column = ctx.createLinearGradient(point.x - 16, 0, point.x + 16, 0);
-    column.addColorStop(0, shade(palette.wallTop, -28));
-    column.addColorStop(0.5, shade(palette.wallTop, 4));
-    column.addColorStop(1, shade(palette.wallTop, -34));
-    polygon(ctx, [
-      { x: point.x - 16, y: baseY + 20 },
-      { x: point.x - 11, y: baseY - 52 },
-      { x: point.x + 11, y: baseY - 52 },
-      { x: point.x + 16, y: baseY + 20 }
-    ], column, withAlpha(palette.edge, 0.7));
-
-    const ringY = baseY - 22;
-    const spin = phase / obj.period;
-    ctx.save();
-    ctx.translate(point.x, ringY);
-    ctx.scale(1, 0.52);
-    ctx.beginPath();
-    ctx.strokeStyle = withAlpha(palette.edge, 0.9);
-    ctx.lineWidth = 4;
-    ctx.arc(0, 0, 17, 0, TAU);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.strokeStyle = withAlpha(glowColor, 0.9);
-    ctx.lineWidth = 3;
-    const start = -Math.PI / 2;
-    ctx.arc(0, 0, 17, start, start + spin * TAU);
-    ctx.stroke();
-    for (let i = 0; i < obj.period; i += 1) {
-      const angle = start + (i / obj.period) * TAU;
-      const active = obj.openWhen.includes(i);
-      ctx.fillStyle = active ? withAlpha(palette.accent, 0.95) : withAlpha(palette.edge, 0.6);
-      ctx.beginPath();
-      ctx.arc(Math.cos(angle) * 24, Math.sin(angle) * 24, active ? 2.4 : 1.5, 0, TAU);
-      ctx.fill();
-    }
-    const handAngle = start + spin * TAU;
-    ctx.strokeStyle = palette.warm;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(handAngle) * 15, Math.sin(handAngle) * 15);
-    ctx.stroke();
-    ctx.restore();
-
-    if (this.options.quality !== 'low') {
-      ctx.shadowColor = withAlpha(glowColor, 0.8);
-      ctx.shadowBlur = 14;
-      ctx.fillStyle = withAlpha(glowColor, 0.9);
-      ctx.beginPath();
-      ctx.arc(point.x, ringY - 2, 2.6, 0, TAU);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    }
-
-    if (isSelected) {
-      ctx.strokeStyle = withAlpha(palette.warm, 0.9);
-      ctx.lineWidth = 1.6;
-      ctx.setLineDash([5, 6]);
-      ctx.lineDashOffset = -this.time * 0.01;
-      ctx.beginPath();
-      ctx.ellipse(point.x, point.y + 2, 30, 15, 0, 0, TAU);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    ctx.restore();
-  }
-
-  drawDrone(ctx, entry) {
-    const point = iso(entry.x, entry.y);
-    const palette = this.palette;
-    const selected = this.selected === entry.obj.id;
-    const hover = 34 + Math.sin(this.time * 0.003 + entry.index) * 3;
-    const cy = point.y - hover;
-
-    ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.beginPath();
-    ctx.ellipse(point.x, point.y, 15, 7, 0, 0, TAU);
-    ctx.fill();
-
-    if (this.options.quality !== 'low') {
-      ctx.shadowColor = withAlpha(palette.danger, 0.7);
-      ctx.shadowBlur = 16;
-    }
-    const body = ctx.createRadialGradient(point.x - 4, cy - 5, 2, point.x, cy, 13);
-    body.addColorStop(0, shade(palette.wallTop, 30));
-    body.addColorStop(1, '#05070c');
-    ctx.fillStyle = body;
-    ctx.beginPath();
-    ctx.arc(point.x, cy, 11, 0, TAU);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    ctx.strokeStyle = withAlpha(palette.warm, 0.75);
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(point.x, cy + 2, 17, 6, this.time * 0.0015 + entry.index, 0, TAU);
-    ctx.stroke();
-
-    ctx.fillStyle = palette.danger;
-    ctx.beginPath();
-    ctx.arc(point.x, cy - 1, 3.2, 0, TAU);
-    ctx.fill();
-    if (this.options.quality === 'high') {
-      ctx.strokeStyle = withAlpha(palette.danger, 0.35);
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(point.x, cy - 1, 6.5, 0, TAU);
-      ctx.stroke();
-    }
-
-    if (selected) {
-      ctx.strokeStyle = withAlpha(palette.warm, 0.9);
-      ctx.setLineDash([4, 5]);
-      ctx.lineDashOffset = -this.time * 0.01;
-      ctx.beginPath();
-      ctx.ellipse(point.x, point.y, 22, 11, 0, 0, TAU);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    ctx.restore();
-  }
-
-  drawAnchor(ctx, entry) {
-    const point = iso(entry.x, entry.y);
-    const palette = this.palette;
-    const bob = Math.sin(this.time * 0.0024 + entry.anchor.index) * 4;
-    const cy = point.y - 34 + bob;
-
-    ctx.save();
-    const beam = ctx.createLinearGradient(point.x, cy - 26, point.x, point.y + 8);
-    beam.addColorStop(0, withAlpha(palette.crystal, 0.22));
-    beam.addColorStop(1, withAlpha(palette.crystal, 0));
-    ctx.fillStyle = beam;
-    ctx.beginPath();
-    ctx.moveTo(point.x - 13, point.y + 8);
-    ctx.lineTo(point.x - 4, cy - 30);
-    ctx.lineTo(point.x + 4, cy - 30);
-    ctx.lineTo(point.x + 13, point.y + 8);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = withAlpha(palette.crystal, 0.4);
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.ellipse(point.x, point.y, 16, 8, 0, 0, TAU);
-    ctx.stroke();
-    ctx.strokeStyle = withAlpha(palette.crystal, 0.2);
-    ctx.beginPath();
-    ctx.ellipse(point.x, point.y, 22, 11, 0, 0, TAU);
-    ctx.stroke();
-
-    if (this.options.quality !== 'low') {
-      ctx.shadowColor = withAlpha(palette.crystal, 0.9);
-      ctx.shadowBlur = 22;
-    }
-    const facet = ctx.createLinearGradient(point.x, cy - 20, point.x, cy + 20);
-    facet.addColorStop(0, '#fff6da');
-    facet.addColorStop(0.5, palette.crystal);
-    facet.addColorStop(1, shade(palette.crystal, -70));
-    polygon(ctx, [
-      { x: point.x, y: cy - 20 },
-      { x: point.x + 12, y: cy },
-      { x: point.x, y: cy + 18 },
-      { x: point.x - 12, y: cy }
-    ], facet, 'rgba(255,255,255,0.35)');
-    ctx.shadowBlur = 0;
-
-    ctx.strokeStyle = withAlpha(palette.crystal, 0.25);
-    ctx.beginPath();
-    ctx.ellipse(point.x, cy, 14, 5, 0.4, 0, TAU);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  drawPlayer(ctx) {
-    const palette = this.palette;
-    const state = this.state;
-    const target = iso(state.px, state.py);
-    if (this.options.reducedMotion) {
-      this.vis.x = target.x;
-      this.vis.y = target.y;
-    } else {
-      this.vis.x += (target.x - this.vis.x) * Math.min(1, this.dt * 0.018);
-      this.vis.y += (target.y - this.vis.y) * Math.min(1, this.dt * 0.018);
-    }
-    const cx = this.vis.x;
-    const cy = this.vis.y;
-    const facing = state.facing || 'down';
-    const bob = Math.sin(this.time * 0.004) * 1.2;
-    const bodyY = cy - 12 + bob;
-
-    ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + 3, 16, 8, 0, 0, TAU);
-    ctx.fill();
-
-    const halo = ctx.createLinearGradient(cx, bodyY - 44, cx, bodyY + 6);
-    halo.addColorStop(0, shade(palette.wallTop, 24));
-    halo.addColorStop(1, '#070b12');
-    ctx.beginPath();
-    ctx.moveTo(cx - 15, bodyY + 4);
-    ctx.quadraticCurveTo(cx - 13, bodyY - 26, cx, bodyY - 34);
-    ctx.quadraticCurveTo(cx + 13, bodyY - 26, cx + 15, bodyY + 4);
-    ctx.quadraticCurveTo(cx, bodyY + 12, cx - 15, bodyY + 4);
-    ctx.closePath();
-    ctx.fillStyle = halo;
-    ctx.fill();
-    ctx.strokeStyle = withAlpha(palette.accent, 0.28);
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.ellipse(cx, bodyY - 32, 8.5, 9.5, 0, 0, TAU);
-    ctx.fillStyle = '#0a0f17';
-    ctx.fill();
-    ctx.strokeStyle = withAlpha(palette.edge, 0.9);
-    ctx.stroke();
-
-    const visorOffset = facing === 'left' ? -2.5 : facing === 'right' ? 2.5 : 0;
-    if (this.options.quality !== 'low') {
-      ctx.shadowColor = palette.accent;
-      ctx.shadowBlur = 12;
-    }
-    ctx.fillStyle = palette.accent;
-    ctx.fillRect(cx - 4 + visorOffset, bodyY - 33, 8, 2.2);
-    ctx.shadowBlur = 0;
-
-    ctx.save();
-    ctx.translate(cx, bodyY - 42);
-    ctx.rotate(this.time * 0.0009);
-    ctx.strokeStyle = withAlpha(palette.warm, 0.55);
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 15, 5.5, 0, 0, TAU);
-    ctx.stroke();
-    ctx.fillStyle = withAlpha(palette.warm, 0.8);
-    ctx.beginPath();
-    ctx.arc(15, 0, 1.8, 0, TAU);
-    ctx.fill();
-    ctx.restore();
-
-    const dirs = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
-    const [dx, dy] = dirs[facing] || [0, 1];
-    ctx.strokeStyle = withAlpha(palette.accent, 0.5);
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(cx + dx * 14, cy + 2 + dy * 6);
-    ctx.lineTo(cx + dx * 20, cy + 2 + dy * 9);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  drawGhosts(ctx) {
-    if (!this.ghosts) return;
-    const palette = this.palette;
-    ctx.save();
-    ctx.globalAlpha = 0.35;
-    for (const drone of this.ghosts.drones || []) {
-      const point = iso(drone.x, drone.y);
-      ctx.strokeStyle = withAlpha(palette.danger, 0.9);
-      ctx.setLineDash([4, 4]);
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.ellipse(point.x, point.y, 16, 8, 0, 0, TAU);
-      ctx.stroke();
-    }
-    for (const tile of this.ghosts.closing || []) {
-      const point = iso(tile.x, tile.y);
-      ctx.strokeStyle = withAlpha(palette.danger, 0.65);
-      ctx.setLineDash([3, 5]);
-      ctx.lineWidth = 1.2;
-      diamondPath(ctx, point.x, point.y, TW * 0.84, TH * 0.84);
-      ctx.stroke();
-    }
-    ctx.setLineDash([]);
-    ctx.restore();
-  }
-
-  drawEffects(ctx) {
-    for (const ring of this.rings) {
-      const alpha = Math.max(0, ring.life / ring.maxLife) * 0.7;
-      ctx.strokeStyle = ring.color.replace(/[\d.]+\)$/, `${alpha})`);
-      ctx.lineWidth = 2 * (1 - ring.life / ring.maxLife) + 0.6;
-      ctx.beginPath();
-      ctx.ellipse(ring.x, ring.y, ring.r, ring.r * 0.5, 0, 0, TAU);
-      ctx.stroke();
-    }
-    for (const particle of this.particles) {
-      const alpha = Math.min(1, particle.life / 380);
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = particle.color;
-      ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size, 0, TAU);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-
-    if (this.highlight.size > 0) {
-      ctx.save();
-      ctx.strokeStyle = withAlpha(this.palette.warm, 0.55);
-      ctx.lineWidth = 1.6;
-      ctx.setLineDash([5, 5]);
-      ctx.lineDashOffset = -this.time * 0.012;
-      for (const key of this.highlight) {
-        const x = key % this.level.w;
-        const y = Math.floor(key / this.level.w);
-        const point = iso(x, y);
-        diamondPath(ctx, point.x, point.y, TW * 0.9, TH * 0.9);
-        ctx.stroke();
-      }
-      ctx.setLineDash([]);
+    if (this.options.ghosts && this.ghosts) {
+      ctx.save(); ctx.setLineDash([4, 4]);
+      for (const d of this.ghosts.drones || []) circle(ctx, (d.x + .5) * CELL, (d.y + .5) * CELL, 23, null, '#e87b77', 2);
+      for (const tile of this.ghosts.closing || []) rounded(ctx, tile.x * CELL + 8, tile.y * CELL + 8, CELL - 16, CELL - 22, 7, null, '#e87b77');
       ctx.restore();
     }
   }
-
-  hitTest(clientX, clientY) {
-    if (!this.level || !this.state) return null;
-    const rect = this.canvas.getBoundingClientRect();
-    const localX = clientX - rect.left;
-    const localY = clientY - rect.top;
-    const worldX = (localX - this.camera.ox) / this.camera.scale;
-    const worldY = (localY - this.camera.oy) / this.camera.scale;
-    const fx = worldY / TH + worldX / TW;
-    const fy = worldY / TH - worldX / TW;
-    const cellX = Math.round(fx);
-    const cellY = Math.round(fy);
-    if (cellX < 0 || cellY < 0 || cellX >= this.level.w || cellY >= this.level.h) return null;
-
-    for (const obj of this.level.objects) {
-      if (obj.kind === 'dial') {
-        if (obj.x === cellX && obj.y === cellY) return obj.id;
-      } else if (obj.kind === 'drone') {
-        const phase = mod(this.state.phases[obj.index], obj.path.length);
-        const cell = obj.path[phase];
-        if (cell.x === cellX && cell.y === cellY) return obj.id;
+  drawObject(ctx, obj) {
+    const phase = this.state.phases[obj.index];
+    const pos = obj.kind === 'dial' ? obj : obj.path[mod(phase, obj.path.length)];
+    const x = (pos.x + .5) * CELL, y = (pos.y + .5) * CELL - 3;
+    const selected = obj.id === this.selected;
+    ctx.save();
+    if (selected) { circle(ctx, x, y, 27, null, '#fff3b3', 4); circle(ctx, x, y, 30, null, '#dfaa4c', 2); }
+    if (obj.kind === 'dial') {
+      circle(ctx, x, y + 3, 22, '#8e714f'); circle(ctx, x, y, 22, '#e4b86f'); circle(ctx, x, y, 17, '#fff1ce');
+      for (let i = 0; i < obj.period; i++) {
+        const a = -Math.PI / 2 + i / obj.period * TAU;
+        circle(ctx, x + Math.cos(a) * 14, y + Math.sin(a) * 14, 2.2, obj.openWhen.includes(i) ? '#44ad93' : '#bbafa0');
       }
+      const a = -Math.PI / 2 + phase / obj.period * TAU;
+      ctx.strokeStyle = '#34576a'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * 10, y + Math.sin(a) * 10); ctx.stroke();
+      circle(ctx, x, y, 3, '#34576a');
+      if (this.state.rates[obj.index] === 0) { rounded(ctx, x + 11, y - 24, 15, 15, 5, '#4eaa9f'); ctx.fillStyle = '#fff'; ctx.fillRect(x + 15, y - 21, 2, 9); ctx.fillRect(x + 19, y - 21, 2, 9); }
+    } else {
+      circle(ctx, x, y + 3, 20, '#934c57'); circle(ctx, x, y, 19, '#f08078'); circle(ctx, x, y, 12, '#fff1dc'); circle(ctx, x, y, 7, '#654a60'); circle(ctx, x - 2, y - 2, 2, '#fff');
+      ctx.strokeStyle = '#ffb5a2'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 24, .3, 2.4); ctx.stroke();
     }
-    const control = this.level.controlMap.get(cellY * this.level.w + cellX);
-    if (control) return this.level.objects[control.index].id;
-    return null;
+    ctx.restore();
+  }
+  drawAnchor(ctx, anchor) {
+    const x = (anchor.x + .5) * CELL, y = (anchor.y + .5) * CELL - 4;
+    const bob = Math.sin(this.time * .003 + anchor.index) * 2;
+    ctx.save(); ctx.shadowColor = '#ffcf68'; ctx.shadowBlur = this.options.quality === 'low' ? 0 : 16;
+    circle(ctx, x, y + 8, 20, 'rgba(255,210,109,.27)');
+    ctx.fillStyle = '#ffcb68'; ctx.beginPath(); ctx.moveTo(x, y - 20 + bob); ctx.lineTo(x + 14, y + bob); ctx.lineTo(x, y + 17 + bob); ctx.lineTo(x - 14, y + bob); ctx.closePath(); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = '#fff6d7'; ctx.beginPath(); ctx.moveTo(x, y - 20 + bob); ctx.lineTo(x + 3, y + bob); ctx.lineTo(x, y + 17 + bob); ctx.lineTo(x - 8, y + bob); ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+  drawPlayer(ctx) {
+    const x = (this.vis.x + .5) * CELL, y = (this.vis.y + .5) * CELL;
+    ctx.save();
+    ctx.fillStyle = 'rgba(33,66,76,.24)'; ctx.beginPath(); ctx.ellipse(x, y + 18, 16, 6, 0, 0, TAU); ctx.fill();
+    // A little explorer: ivory cloak, dark face and a distinctive teal scarf.
+    ctx.fillStyle = '#f7f3e6'; ctx.beginPath(); ctx.moveTo(x - 15, y + 13); ctx.quadraticCurveTo(x - 13, y - 13, x, y - 17); ctx.quadraticCurveTo(x + 13, y - 13, x + 15, y + 13); ctx.quadraticCurveTo(x, y + 20, x - 15, y + 13); ctx.fill();
+    ctx.strokeStyle = '#b8c8c4'; ctx.lineWidth = 2; ctx.stroke();
+    circle(ctx, x, y - 9, 10, '#4d6672');
+    circle(ctx, x - 3, y - 10, 1.5, '#e7fff6'); circle(ctx, x + 3, y - 10, 1.5, '#e7fff6');
+    rounded(ctx, x - 12, y + 1, 24, 6, 3, '#50bdaa');
+    ctx.fillStyle = '#50bdaa'; ctx.beginPath(); ctx.moveTo(x + 5, y + 5); ctx.lineTo(x + 15, y + 15); ctx.lineTo(x + 6, y + 13); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  cellAt(clientX, clientY) {
+    if (!this.level) return null;
+    const rect = this.canvas.getBoundingClientRect();
+    const x = Math.floor((clientX - rect.left - this.camera.ox) / this.camera.scale / CELL);
+    const y = Math.floor((clientY - rect.top - this.camera.oy) / this.camera.scale / CELL);
+    return x >= 0 && y >= 0 && x < this.level.w && y < this.level.h ? { x, y } : null;
+  }
+  hitTest(clientX, clientY) {
+    const cell = this.cellAt(clientX, clientY);
+    if (!cell || !this.state) return null;
+    for (const obj of this.level.objects) {
+      const pos = obj.kind === 'dial' ? obj : obj.path[mod(this.state.phases[obj.index], obj.path.length)];
+      if (pos.x === cell.x && pos.y === cell.y) return obj.id;
+    }
+    const control = this.level.controlMap.get(cell.y * this.level.w + cell.x);
+    return control ? this.level.objects[control.index].id : null;
   }
 }

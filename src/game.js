@@ -1,6 +1,6 @@
 import { LEVEL_DEFS } from './data/levels.js';
 import { parseLevel } from './core/level.js';
-import { applyAction, createState, previewTick } from './core/sim.js';
+import { applyAction, createState, previewTick, previewAction } from './core/sim.js';
 import { loadSave, persistSave, markCompleted, resetProgress, LEVEL_COUNT } from './core/save.js';
 import { LOCALES, detectLocale, localeInfo, makeT } from './core/i18n.js';
 import { Sound } from './core/audio.js';
@@ -30,7 +30,13 @@ export function boot() {
     hintText: document.getElementById('hint-text'),
     keys: document.getElementById('hud-keys'),
     toast: document.getElementById('toast'),
-    banner: document.getElementById('banner')
+    banner: document.getElementById('banner'),
+    objectiveLabel: document.getElementById('objective-label'),
+    objectiveText: document.getElementById('objective-text'),
+    objectiveCount: document.getElementById('objective-count'),
+    objectiveFill: document.getElementById('objective-fill'),
+    objectsLabel: document.getElementById('objects-label'),
+    ratesLabel: document.getElementById('rates-label')
   };
 
   const { save, recovered } = loadSave();
@@ -195,6 +201,31 @@ export function boot() {
     dom.restart.setAttribute('aria-label', chrome.restartLabel);
     dom.hintButton.setAttribute('aria-label', chrome.hintLabel);
     if (dom.keys) dom.keys.textContent = app.t('hud.keys');
+    const got = app.state.got.filter(Boolean).length;
+    const total = app.level.anchors.length;
+    dom.objectiveLabel.textContent = app.t('new.objective');
+    dom.objectiveText.textContent = app.t('new.collect');
+    document.getElementById('board-help').textContent = app.t('new.boardHelp');
+    dom.objectiveCount.textContent = `${got} / ${total}`;
+    dom.objectiveFill.style.width = `${total ? got / total * 100 : 0}%`;
+    dom.objectsLabel.textContent = app.t('new.select');
+    dom.objects.setAttribute('aria-label', app.t('new.select'));
+    dom.ratesLabel.textContent = app.t('new.time');
+    const waitStatus = previewAction(app.level, app.state, { type: 'wait' });
+    const waitForecast = document.getElementById('wait-forecast');
+    waitForecast.textContent = `${app.t('new.wait')} · ${app.t(`new.${waitStatus}`)}`;
+    waitForecast.dataset.preview = waitStatus;
+    // Predictions use the same deterministic simulation as actual moves; they
+    // are advisory only and never prevent the player from taking a risk.
+    hud.querySelectorAll('[data-move]').forEach((button) => {
+      const dir = button.dataset.move;
+      const action = dir === 'wait' ? { type: 'wait' } : { type: 'move', dir };
+      const status = previewAction(app.level, app.state, action);
+      button.dataset.preview = status;
+      const label = dir === 'wait' ? app.t('new.wait') : ({up: '↑', down: '↓', left: '←', right: '→'})[dir];
+      button.setAttribute('aria-label', `${label} · ${app.t(`new.${status}`)}`);
+      button.title = `${label} · ${app.t(`new.${status}`)}`;
+    });
 
     const objects = UI.hudObjects(app);
     if (dom.objects.dataset.signature !== objects) {
@@ -259,10 +290,12 @@ export function boot() {
     if (!force && !app.save.settings.hints) return;
     dom.hintText.textContent = app.t(app.level.hintKey);
     dom.hint.hidden = false;
+    hud.classList.add('hint-open');
   }
 
   function hideHint() {
     dom.hint.hidden = true;
+    hud.classList.remove('hint-open');
   }
 
   /* ---------- gameplay ---------- */
@@ -398,6 +431,7 @@ export function boot() {
         const result = applyAction(app.level, app.state, action);
         if (!result.ok) {
           app.audio.play('bump');
+          toast(app.t('new.blockedMessage'));
           return;
         }
         app.history.push(previous);
@@ -598,6 +632,15 @@ export function boot() {
     } else if (['pause', 'undo', 'restart', 'hint'].includes(verb)) perform({ type: verb });
   });
 
+  // Pointer controls respond immediately; keyboard activation produces a click
+  // with detail 0 and must not depend on a pointer event.
+  hud.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-move]');
+    if (!button || event.detail !== 0) return;
+    const move = button.dataset.move;
+    perform(move === 'wait' ? { type: 'wait' } : { type: 'move', dir: move });
+  });
+
   hud.addEventListener('pointerdown', (event) => {
     const button = event.target.closest('[data-move]');
     if (!button) return;
@@ -627,6 +670,18 @@ export function boot() {
     const dy = event.clientY - startY;
     const distance = Math.hypot(dx, dy);
     if (distance < TAP_SLOP) {
+      const cell = app.scene.cellAt(event.clientX, event.clientY);
+      if (cell) {
+        const dx = cell.x - app.state.px;
+        const dy = cell.y - app.state.py;
+        if (Math.abs(dx) + Math.abs(dy) === 1) {
+          const dir = dx === 1 ? 'right' : dx === -1 ? 'left' : dy === 1 ? 'down' : 'up';
+          if (previewAction(app.level, app.state, { type: 'move', dir }) !== 'blocked') {
+            perform({ type: 'move', dir });
+            return;
+          }
+        }
+      }
       const id = app.scene.hitTest(event.clientX, event.clientY);
       if (id) selectObject(id);
       return;

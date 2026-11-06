@@ -19,6 +19,9 @@ export function createInput({ onAction, isActive }) {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     const target = event.target;
     if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) return;
+    // Let focused buttons handle their own keyboard activation, rather than
+    // treating Space as both a wait action and a button click.
+    if (target?.tagName === 'BUTTON' && (event.key === ' ' || event.key === 'Enter')) return;
 
     if (!isActive()) {
       if (event.key === 'Escape') onAction({ type: 'escape' });
@@ -60,10 +63,6 @@ export function createInput({ onAction, isActive }) {
       case 'e':
       case 'E':
         onAction({ type: 'cycle', delta: 1 });
-        break;
-      case 'Tab':
-        event.preventDefault();
-        onAction({ type: 'cycle', delta: event.shiftKey ? -1 : 1 });
         break;
       case '1':
         onAction({ type: 'rate', rate: -1 });

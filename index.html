@@ -41,6 +41,12 @@
           </div>
         </header>
 
+        <div class="objective" id="objective" aria-live="polite">
+          <span class="objective__icon">✦</span><span><small id="objective-label"></small><strong id="objective-text"></strong></span><span class="objective__count" id="objective-count"></span><span class="objective__track"><i id="objective-fill"></i></span><span class="objective__forecast" id="wait-forecast"></span>
+        </div>
+
+        <div class="board-help" id="board-help"></div>
+
         <div class="hud__bottom">
           <div class="pad" id="pad" aria-label="Movement">
             <button class="pad__btn pad__btn--up" data-move="up" aria-label="Up"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></button>
@@ -50,11 +56,11 @@
             <button class="pad__btn pad__btn--down" data-move="down" aria-label="Down"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg></button>
           </div>
 
-          <div class="objects" id="objects" role="listbox" aria-label="Chronowork objects"></div>
+          <div class="objects-wrap"><span class="deck-label" id="objects-label"></span><div class="objects" id="objects" role="listbox" aria-label="Chronowork objects"></div></div>
 
           <span class="keys" id="hud-keys"></span>
 
-          <div class="rates" id="rates"></div>
+          <div class="rates-wrap"><span class="deck-label" id="rates-label"></span><div class="rates" id="rates"></div></div>
         </div>
 
         <div class="hintcard" id="hint" hidden>

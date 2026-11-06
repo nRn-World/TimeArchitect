@@ -42,19 +42,24 @@ export function languageScreen(app) {
       </button>`
   ).join('');
   return `
-    <section class="screen screen--center">
-      <div class="hero">
-        ${mark()}
-        <p class="eyebrow">${esc(t('app.studio'))}</p>
-        <h1 class="display hero__title">${esc(t('app.title'))}</h1>
-        <p class="hero__tag">${esc(t('app.tagline'))}</p>
+    <section class="screen language-welcome">
+      <header class="home__header">
+        <div class="home__brand">${mark()}<span>TIME <strong>ARCHITECT</strong><small>${esc(t('app.studio'))}</small></span></div>
+      </header>
+      <div class="language-welcome__content">
+        <div class="language-welcome__intro">
+          <p class="home__kicker"><span></span>${esc(t('new.eyebrow'))}</p>
+          <h1 class="home__title">${esc(t('new.headline'))}</h1>
+          <p class="home__intro">${esc(t('new.intro'))}</p>
+        </div>
+        <div class="language-welcome__card">
+          <span class="language-welcome__globe">${icon('globe')}</span>
+          <h2 class="display">${esc(t('language.title'))}</h2>
+          <p>${esc(t('language.subtitle'))}</p>
+          <div class="langgrid">${chips}</div>
+        </div>
       </div>
-      <div class="stack" style="width:min(680px,100%);gap:10px">
-        <h2 class="screen__title display" style="font-size:clamp(1.4rem,3.4vw,2rem)">${esc(t('language.title'))}</h2>
-        <p class="screen__lead">${esc(t('language.subtitle'))}</p>
-      </div>
-      <div class="langgrid" style="width:min(680px,100%)">${chips}</div>
-      <div class="screen__foot"><span>${esc(t('app.studio'))}</span></div>
+      <footer class="home__footer"><span>${esc(t('new.offline'))}</span><span>${esc(t('app.studio'))} · v1.1</span></footer>
     </section>`;
 }
 
@@ -65,34 +70,31 @@ export function titleScreen(app) {
   const started = done > 0 || save.progress.unlocked > 0 || Object.keys(save.progress.seenHints).length > 0;
   const width = Math.round((done / total) * 100);
   return `
-    <section class="screen screen--center">
-      <div class="hero">
-        ${mark()}
-        <p class="eyebrow">${esc(t('app.studio'))}</p>
-        <h1 class="display hero__title">${esc(t('app.title'))}</h1>
-        <p class="hero__tag">${esc(t('app.tagline'))}</p>
+    <section class="screen home">
+      <header class="home__header">
+        <div class="home__brand">${mark()}<span>TIME <strong>ARCHITECT</strong><small>${esc(t('app.studio'))}</small></span></div>
+        <button class="home__settings" data-action="screen:settings">${icon('globe')} <span>${esc(localeLabel(app.locale))}</span></button>
+      </header>
+      <div class="home__content">
+        <div class="home__copy">
+          <p class="home__kicker"><span></span>${esc(t('new.eyebrow'))}</p>
+          <h1 class="home__title">${esc(t('new.headline'))}</h1>
+          <p class="home__intro">${esc(t('new.intro'))}</p>
+          <div class="home__actions">
+            <button class="btn btn--primary home__play" data-action="${started ? 'play:last' : 'play:c01'}">${icon('play')} ${esc(t(started ? 'new.resume' : 'new.begin'))} ${icon('chevronRight')}</button>
+            <button class="btn home__map" data-action="screen:levels">${esc(t('new.explore'))} ${icon('chevronRight')}</button>
+          </div>
+          <button class="home__guide" data-action="screen:howto"><span>?</span> ${esc(t('new.guide'))} ${icon('chevronRight')}</button>
+        </div>
+        <aside class="home__journey" aria-label="${esc(t('new.collection'))}">
+          <div class="home__journey-head"><span>${esc(t('new.collection'))}</span><span>✦</span></div>
+          <div class="home__journey-number">${String(done).padStart(2, '0')} <span>/ ${total}</span></div>
+          <div class="home__journey-label">${esc(t('new.complete'))}</div>
+          <div class="progress__bar" role="progressbar" aria-label="${esc(t('new.collection'))}" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done}"><div class="progress__fill" style="width:${width}%"></div></div>
+          <button data-action="screen:levels">${esc(t('new.explore'))} →</button>
+        </aside>
       </div>
-      <div class="progress">
-        <div class="progress__bar"><div class="progress__fill" style="width:${width}%"></div></div>
-        <span>${esc(t('menu.progress', { done, total }))}</span>
-      </div>
-      <div class="menu">
-        ${
-          started
-            ? `<button class="btn btn--primary btn--wide" data-action="play:last">${esc(t('menu.continue'))}</button>`
-            : `<button class="btn btn--primary btn--wide" data-action="play:c01">${esc(t('menu.newgame'))}</button>`
-        }
-        <button class="btn btn--wide" data-action="screen:levels">${esc(t('menu.play'))}</button>
-        <button class="btn btn--wide" data-action="screen:howto">${esc(t('menu.howto'))}</button>
-        <button class="btn btn--wide" data-action="screen:settings">${esc(t('menu.settings'))}</button>
-        <button class="btn btn--wide" data-action="screen:credits">${esc(t('menu.credits'))}</button>
-        <button class="btn btn--wide" data-action="screen:privacy">${esc(t('menu.privacy'))}</button>
-      </div>
-      <div class="screen__foot">
-        <span>${esc(t('app.studio'))}</span>
-        <span>·</span>
-        <span>v1.1.0</span>
-      </div>
+      <footer class="home__footer"><span>${esc(t('new.offline'))}</span><div><button data-action="screen:credits">${esc(t('menu.credits'))}</button><button data-action="screen:privacy">${esc(t('menu.privacy'))}</button><span>v1.1</span></div></footer>
     </section>`;
 }
 
@@ -107,10 +109,10 @@ export function levelsScreen(app) {
         ? `${t('ui.completed')}${best ? ` · ${t('win.best', { moves: best })}` : ''}`
         : locked
           ? t('ui.locked')
-          : t('ui.chamber');
+          : t('new.available');
       return `
         <button class="levelcard ${done ? 'levelcard--done' : ''}" data-action="play:${level.id}" ${locked ? 'disabled' : ''}>
-          <span class="levelcard__num">${String(index + 1).padStart(2, '0')}</span>
+          <span class="levelcard__chapter">${esc(t('new.chamber'))}</span><span class="levelcard__num">${String(index + 1).padStart(2, '0')}</span>
           <span class="levelcard__title">${esc(t(level.titleKey))}</span>
           <span class="levelcard__sub">${esc(t(level.subtitleKey))}</span>
           <span class="levelcard__meta">${esc(meta)}</span>
@@ -144,7 +146,11 @@ export function howtoScreen(app) {
         <p class="eyebrow">${esc(t('app.title'))}</p>
       </div>
       <h1 class="screen__title display">${esc(t('howto.title'))}</h1>
+      <p class="screen__lead">${esc(t('new.guideIntro'))}</p>
+      <p class="guide-note">${esc(t('new.free'))}</p>
+      <div class="guide-keys"><span><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> ${esc(t('hud.keys').split('·')[0])}</span><span><kbd>1</kbd>–<kbd>4</kbd> ${esc(t('new.time'))}</span><span><kbd>Z</kbd> ${esc(t('hud.undo'))}</span></div>
       <div class="panel steps">${steps}</div>
+      <div class="panel guide-legend"><p>${esc(t('new.boardGuide'))}</p><p>◉ &nbsp;${esc(t('new.legendPhase'))}</p><p>! &nbsp;${esc(t('new.legendMove'))}</p></div>
       <div class="screen__foot">
         <button class="btn btn--primary" data-action="back">${esc(t('ui.close'))}</button>
       </div>
@@ -343,7 +349,7 @@ export function modalWin(app) {
     <div class="modal" role="dialog" aria-modal="true" aria-label="${esc(t('win.title'))}">
       <div class="modal__panel">
         <p class="eyebrow">${esc(t(`level.${level.id}.title`))}</p>
-        <h2 class="modal__title">${esc(t('win.title'))}</h2>
+        <h2 class="modal__title">${esc(t('win.title'))}</h2><p class="modal__text">${esc(t('new.finished'))}</p>
         <div class="modal__stats">
           <span class="stat">${esc(t('win.moves', { moves }))}</span>
           <span class="stat stat--muted">${esc(t('win.par', { par: level.par }))}</span>
@@ -366,10 +372,10 @@ export function modalFail(app) {
     <div class="modal" role="dialog" aria-modal="true" aria-label="${esc(t('fail.title'))}">
       <div class="modal__panel">
         <span class="badge badge--danger">${esc(t('fail.title'))}</span>
-        <p class="modal__text">${esc(t(reasonKey))}</p>
+        <p class="modal__text">${esc(t(reasonKey))}</p><p class="note">${esc(t('new.tryUndo'))}</p>
         <div class="modal__actions">
-          <button class="btn btn--primary" data-action="restart">${esc(t('fail.retry'))}</button>
-          <button class="btn" data-action="undo">${esc(t('fail.undo'))}</button>
+          <button class="btn btn--primary" data-action="undo" ${app.history.length ? '' : 'disabled'}>${esc(t('fail.undo'))}</button>
+          <button class="btn" data-action="restart">${esc(t('fail.retry'))}</button>
         </div>
       </div>
     </div>`;
@@ -406,15 +412,18 @@ export function hudObjects(app) {
       const rate = app.state.rates[index];
       const phase = app.state.phases[index];
       const selected = app.selected === obj.id;
-      const kindLabel = t(obj.kind === 'dial' ? 'kind.dial' : 'kind.drone');
+      const kindLabel = `${t(obj.kind === 'dial' ? 'kind.dial' : 'kind.drone')} ${index + 1}`;
       const rateLabel = t(rate === -1 ? 'rate.rewind' : rate === 0 ? 'rate.pause' : rate > 1 ? 'rate.fast' : 'rate.play');
+      const nextPhase = ((phase + rate) % obj.period + obj.period) % obj.period;
+      const status = obj.kind === 'dial' ? `${t(obj.openWhen.includes(phase) ? 'new.open' : 'new.closed')} → ${t(obj.openWhen.includes(nextPhase) ? 'new.open' : 'new.closed')}` : `${t('new.next')} ${nextPhase + 1}/${obj.period}`;
       return `
         <button class="objchip" role="option" aria-selected="${selected}" data-action="select:${obj.id}" data-object="${obj.id}">
           <span class="objchip__icon" aria-hidden="true">${icon(obj.kind === 'dial' ? 'dial' : 'drone')}</span>
           <span>
             <span class="objchip__name">${esc(kindLabel)}</span>
-            <span class="objchip__meta">${esc(rateLabel)} · ${phase + 1}/${obj.period}</span>
+            <span class="objchip__meta">${esc(rateLabel)} · ${phase + 1}/${obj.period}<br><span class="objchip__status">${esc(status)}</span></span>
           </span>
+          <span class="phase-track" aria-hidden="true">${Array.from({ length: obj.period }, (_, i) => `<i class="${i === phase ? 'phase-track__current' : ''} ${obj.kind === 'dial' && obj.openWhen.includes(i) ? 'phase-track__open' : ''} ${i === nextPhase ? 'phase-track__next' : ''}"></i>`).join('')}</span>
         </button>`;
     })
     .join('');
@@ -436,7 +445,7 @@ export function hudRates(app) {
       (rate) => `
       <button class="rate" data-action="rate:${rate.value}" aria-pressed="${app.state.rates[selected.index] === rate.value}" ${app.state.won || app.state.dead ? 'disabled' : ''}>
         <span class="rate__icon" aria-hidden="true">${icon(rate.icon)}</span>
-        <span class="rate__label">${esc(t(rate.key))}</span>
+        <span class="rate__label">${esc(t(rate.key))} <small>${rates.indexOf(rate) + 1}</small></span>
       </button>`
     )
     .join('');
